@@ -1,0 +1,14 @@
+[
+  {
+    "id": "1",
+    "name": "Беспроводные наушники",
+    "price": 4500.0,
+    "imageUrl": "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/item1.jpg"
+  },
+  {
+    "id": "2",
+    "name": "Умные часы",
+    "price": 8900.0,
+    "imageUrl": "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/item2.jpg"
+  }
+]

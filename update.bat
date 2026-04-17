@@ -1,16 +1,16 @@
 @echo off
 chcp 65001 > nul
-echo Запуск синхронизации с GitHub...
+echo Starting GitHub synchronization...
 
-:: Добавляем все измененные и новые файлы (включая картинки)
+rem Add all changed and new files
 git add .
 
-:: Создаем сохранение с текущей датой и временем
-git commit -m "Автоматическое обновление базы товаров: %date% %time%"
+rem Create a commit with the current date and time
+git commit -m "Auto-update products database: %date% %time%"
 
-:: Отправляем файлы на сервер GitHub
+rem Push files to GitHub
 git push origin main
 
 echo.
-echo Готово! Данные успешно обновлены на GitHub.
+echo Done! Data successfully updated on GitHub.
 pause
