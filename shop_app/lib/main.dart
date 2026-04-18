@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 // --- Модели данных ---
 class AppData {
@@ -37,6 +38,8 @@ class Product {
   final String description;
   final String image;
   final int price;
+  final int points;
+  final String category;
 
   Product({
     required this.id,
@@ -44,6 +47,8 @@ class Product {
     required this.description,
     required this.image,
     required this.price,
+    required this.points,
+    required this.category,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -156,7 +161,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Мой Магазин',
+      title: 'НПК ИНФИНИТИ',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
@@ -268,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Мой Магазин',
+          'НПК ИНФИНИТИ',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -426,10 +431,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.grey.shade200),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
                               ],
@@ -443,19 +449,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   child: CachedNetworkImage(
                                     imageUrl: imageUrl,
-                                    height: 220,
+                                    height: 160,
                                     width: double.infinity,
-                                    fit: BoxFit.cover,
+                                    fit: BoxFit.contain,
                                     placeholder: (context, url) =>
                                         const SizedBox(
-                                          height: 220,
+                                          height: 160,
                                           child: Center(
                                             child: CircularProgressIndicator(),
                                           ),
                                         ),
                                     errorWidget: (context, url, error) =>
                                         const SizedBox(
-                                          height: 220,
+                                          height: 160,
                                           child: Icon(
                                             Icons.broken_image,
                                             size: 50,
@@ -464,7 +470,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.all(16.0),
+                                  padding: const EdgeInsets.all(12.0),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -472,16 +478,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                       Text(
                                         product.name,
                                         style: const TextStyle(
-                                          fontSize: 20,
+                                          fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                      const SizedBox(height: 12),
+                                      const SizedBox(height: 8),
                                       Row(
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
+                                              horizontal: 10,
                                               vertical: 6,
                                             ),
                                             decoration: BoxDecoration(
@@ -496,14 +502,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                               style: const TextStyle(
                                                 color: Colors.blue,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 15,
+                                                fontSize: 14,
                                               ),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
+                                              horizontal: 10,
                                               vertical: 6,
                                             ),
                                             decoration: BoxDecoration(
@@ -518,13 +524,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                               style: TextStyle(
                                                 color: Colors.orange.shade800,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 15,
+                                                fontSize: 14,
                                               ),
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 12),
+                                      const SizedBox(height: 8),
                                       Text(
                                         product.description,
                                         maxLines: 2,
@@ -655,6 +661,16 @@ class ProductDetailScreen extends StatelessWidget {
           product.name,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              final shareText =
+                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}\n\n🖼️ Фото: $imageUrl';
+              Share.share(shareText);
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -787,19 +803,23 @@ class ArticleDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (article.image.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl:
-                    "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
-                width: double.infinity,
-                height: 250,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => const SizedBox(
+              Container(
+                color: const Color(0xFFF8F9FA),
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: CachedNetworkImage(
+                  imageUrl:
+                      "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
+                  width: double.infinity,
                   height: 250,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const SizedBox(
-                  height: 250,
-                  child: Icon(Icons.broken_image, size: 50),
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const SizedBox(
+                    height: 250,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => const SizedBox(
+                    height: 250,
+                    child: Icon(Icons.broken_image, size: 50),
+                  ),
                 ),
               ),
             Container(
