@@ -137,19 +137,34 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       body: _buildBody(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (int index) {
           setState(() {
             _selectedIndex = index;
           });
         },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent, // Убирает системный оттенок
+        indicatorColor: Colors.blue.withOpacity(
+          0.15,
+        ), // Красивый голубой овал для активного пункта
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(
+              Icons.shopping_bag_outlined,
+            ), // Контурная иконка, когда не выбрано
+            selectedIcon: Icon(
+              Icons.shopping_bag,
+              color: Colors.blue,
+            ), // Залитая иконка, когда выбрано
             label: 'Товары',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Статьи'),
+          NavigationDestination(
+            icon: Icon(Icons.article_outlined),
+            selectedIcon: Icon(Icons.article, color: Colors.blue),
+            label: 'Статьи',
+          ),
         ],
       ),
     );
