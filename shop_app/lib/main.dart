@@ -90,8 +90,11 @@ class DataManager {
 
   Future<bool> syncWithGitHub() async {
     try {
+      // Добавляем текущее время, чтобы сбросить жесткий кэш GitHub
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+
       final versionResponse = await http.get(
-        Uri.parse('$repoUrl/version.json'),
+        Uri.parse('$repoUrl/version.json?t=$timestamp'),
       );
       if (versionResponse.statusCode == 200) {
         final remoteVersion = jsonDecode(versionResponse.body)['version'];
@@ -100,7 +103,9 @@ class DataManager {
         final localVersion = prefs.getInt('version') ?? 0;
 
         if (remoteVersion > localVersion) {
-          final dataResponse = await http.get(Uri.parse('$repoUrl/data.json'));
+          final dataResponse = await http.get(
+            Uri.parse('$repoUrl/data.json?t=$timestamp'),
+          );
           if (dataResponse.statusCode == 200) {
             final directory = await getApplicationDocumentsDirectory();
             final file = File('${directory.path}/$fileName');
