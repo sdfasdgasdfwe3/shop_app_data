@@ -438,7 +438,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.grey.shade300, width: 1.5), // Усилили обводку
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: 1.5,
+                              ), // Усилили обводку
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.08),
@@ -488,33 +491,76 @@ class _HomeScreenState extends State<HomeScreen> {
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          fontSize: 18, // Увеличили шрифт названия
+                                          fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                           height: 1.2,
                                         ),
                                       ),
                                       const SizedBox(height: 10),
-                                      Wrap(
-                                        spacing: 6, // Отступ между ценниками
-                                        runSpacing: 6,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                            child: Text(
-                                              '${product.price} ₽',
-                                              style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
+                                      FittedBox(
+                                        fit: BoxFit
+                                            .scaleDown, // Уменьшает размер, если не влезает
+                                        alignment: Alignment.centerLeft,
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withOpacity(
+                                                  0.1,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                '${product.price} ₽',
+                                                style: const TextStyle(
+                                                  color: Colors.blue,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                            child: Text(
-                                              '${product.points} баллов',
-                                              style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold, fontSize: 13),
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.orange
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                '${product.points} баллов',
+                                                style: TextStyle(
+                                                  color: Colors.orange.shade800,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        product.description,
+                                        maxLines:
+                                            2, // Как раз около 50 символов
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                          height: 1.3,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -795,66 +841,6 @@ class ArticleDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (article.image.isNotEmpty)
-              Container(
-                color: const Color(0xFFF8F9FA),
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: CachedNetworkImage(
-                  imageUrl:
-                      "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
-                  width: double.infinity,
-                  height: 250,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => const SizedBox(
-                    height: 250,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => const SizedBox(
-                    height: 250,
-                    child: Icon(Icons.broken_image, size: 50),
-                  ),
-                ),
-              ),
-            Container(
-              transform: article.image.isNotEmpty
-                  ? Matrix4.translationValues(0, -20, 0)
-                  : null,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: article.image.isNotEmpty
-                    ? const BorderRadius.vertical(top: Radius.circular(24))
-                    : null,
-              ),
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    article.title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    article.content,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      height: 1.8,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
             if (article.image.isNotEmpty)
               Container(
                 color: const Color(0xFFF8F9FA),
