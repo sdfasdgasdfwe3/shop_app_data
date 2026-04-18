@@ -1,4 +1,6 @@
 {
-  "version": 10,
-  "last_updated": "2026-04-18"
+  "version": 11,
+  "last_updated": "2026-04-18",
+  "app_version": 2,
+  "app_update_url": "https://github.com/sdfasdgasdfwe3/shop_app_data/releases/latest"
 }

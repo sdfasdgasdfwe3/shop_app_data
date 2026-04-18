@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // --- Модели данных ---
 class AppData {
@@ -53,14 +54,21 @@ class Article {
   final int id;
   final String title;
   final String content;
+  final String image;
 
-  Article({required this.id, required this.title, required this.content});
+  Article({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.image,
+  });
 
   factory Article.fromJson(Map<String, dynamic> json) {
     return Article(
       id: json['id'],
       title: json['title'],
       content: json['content'],
+      image: json['image'] ?? '',
     );
   }
 }
@@ -71,6 +79,9 @@ class DataManager {
   final String repoUrl =
       "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main";
   final String fileName = "data.json";
+
+  int remoteAppVersion = 1;
+  String appUpdateUrl = "";
 
   Future<AppData> getLocalData() async {
     try {
@@ -97,7 +108,10 @@ class DataManager {
         Uri.parse('$repoUrl/version.json?t=$timestamp'),
       );
       if (versionResponse.statusCode == 200) {
-        final remoteVersion = jsonDecode(versionResponse.body)['version'];
+        final versionData = jsonDecode(versionResponse.body);
+        final remoteVersion = versionData['version'];
+        remoteAppVersion = versionData['app_version'] ?? 1;
+        appUpdateUrl = versionData['app_update_url'] ?? "";
 
         final prefs = await SharedPreferences.getInstance();
         final localVersion = prefs.getInt('version') ?? 0;
@@ -135,7 +149,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Мой Магазин',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF5F7FA),
         appBarTheme: const AppBarTheme(
@@ -162,6 +176,8 @@ class _HomeScreenState extends State<HomeScreen> {
   AppData appData = AppData(products: [], articles: []);
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи
+  int _currentAppVersion = 1; // Текущая версия этого приложения
+  bool _updateDialogShown = false;
 
   @override
   void initState() {
@@ -177,6 +193,14 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     final isUpdated = await dataManager.syncWithGitHub();
+
+    // Проверяем, не нужно ли обновить само приложение
+    if (dataManager.remoteAppVersion > _currentAppVersion &&
+        !_updateDialogShown) {
+      _updateDialogShown = true;
+      _showUpdateDialog(dataManager.appUpdateUrl);
+    }
+
     if (isUpdated) {
       final newData = await dataManager.getLocalData();
       setState(() {
@@ -186,6 +210,46 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       setState(() => isLoading = false);
     }
+  }
+
+  void _showUpdateDialog(String url) {
+    showDialog(
+      context: context,
+      barrierDismissible:
+          false, // Пользователь не сможет закрыть окно мимо кнопки
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.system_update, color: Colors.blue),
+            SizedBox(width: 8),
+            Text(
+              'Обновление',
+              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Вышла новая версия приложения! Пожалуйста, обновитесь для получения новых функций и стабильной работы.',
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: const Text('Скачать обновление'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -287,14 +351,47 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${product.price} баллов',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Цена: ${product.price} ₽',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Баллы: ${product.price}',
+                                style: TextStyle(
+                                  color: Colors.orange.shade800,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -335,8 +432,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
               onTap: () {
                 Navigator.push(
                   context,
@@ -345,32 +442,56 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               },
-              leading: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.article,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              title: Text(
-                article.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  article.content,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (article.image.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      child: CachedNetworkImage(
+                        imageUrl:
+                            "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => const SizedBox(
+                          height: 160,
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (context, url, error) => const SizedBox(
+                          height: 160,
+                          child: Icon(Icons.broken_image),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          article.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          article.content,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -440,24 +561,45 @@ class ProductDetailScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                          horizontal: 16,
+                          vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withOpacity(0.1),
+                          color: Colors.blue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '${product.price} баллов',
+                          'Цена: ${product.price} ₽',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Баллы: ${product.price}',
                           style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
                           ),
                         ),
                       ),
@@ -502,42 +644,60 @@ class ArticleDetailScreen extends StatelessWidget {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                article.title,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  height: 1.3,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (article.image.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl:
+                    "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
+                width: double.infinity,
+                height: 250,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const SizedBox(
+                  height: 250,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  height: 250,
+                  child: Icon(Icons.broken_image, size: 50),
                 ),
               ),
-              const SizedBox(height: 20),
-              Text(
-                article.content,
-                style: const TextStyle(
-                  fontSize: 16,
-                  height: 1.8,
-                  color: Colors.black87,
-                ),
+            Container(
+              transform: article.image.isNotEmpty
+                  ? Matrix4.translationValues(0, -20, 0)
+                  : null,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: article.image.isNotEmpty
+                    ? const BorderRadius.vertical(top: Radius.circular(24))
+                    : null,
               ),
-            ],
-          ),
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article.title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    article.content,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.8,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
