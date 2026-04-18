@@ -749,12 +749,46 @@ class ArticleDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = article.image.isNotEmpty
+        ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
+        : "";
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Статья',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () async {
+              final shareText = '📄 ${article.title}\n\n${article.content}';
+
+              if (imageUrl.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Загрузка фото для отправки...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                try {
+                  final response = await http.get(Uri.parse(imageUrl));
+                  final tempDir = await getTemporaryDirectory();
+                  final file = await File(
+                    '${tempDir.path}/share_${article.image}',
+                  ).create();
+                  await file.writeAsBytes(response.bodyBytes);
+                  await Share.shareXFiles([XFile(file.path)], text: shareText);
+                } catch (e) {
+                  Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
+                }
+              } else {
+                Share.share(shareText);
+              }
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -762,8 +796,7 @@ class ArticleDetailScreen extends StatelessWidget {
           children: [
             if (article.image.isNotEmpty)
               CachedNetworkImage(
-                imageUrl:
-                    "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
+                imageUrl: imageUrl,
                 width: double.infinity,
                 height: 350,
                 fit: BoxFit.cover, // Растягиваем на весь экран
