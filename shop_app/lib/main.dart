@@ -676,18 +676,22 @@ class ProductDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CachedNetworkImage(
-              imageUrl: imageUrl,
-              width: double.infinity,
-              height: 350,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => const SizedBox(
-                height: 350,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (context, url, error) => const SizedBox(
-                height: 350,
-                child: Icon(Icons.broken_image, size: 100),
+            Container(
+              color: const Color(0xFFF8F9FA), // Светло-серый фон
+              padding: const EdgeInsets.symmetric(vertical: 24.0),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: double.infinity,
+                height: 320,
+                fit: BoxFit.contain, // Чтобы не обрезалось
+                placeholder: (context, url) => const SizedBox(
+                  height: 320,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  height: 320,
+                  child: Icon(Icons.broken_image, size: 100),
+                ),
               ),
             ),
             Container(
