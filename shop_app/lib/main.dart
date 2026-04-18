@@ -1,155 +1,13 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
-// --- Модели данных ---
-class AppData {
-  final List<Product> products;
-  final List<Article> articles;
-  final List<String> categories;
-
-  AppData({
-    required this.products,
-    required this.articles,
-    required this.categories,
-  });
-
-  factory AppData.fromJson(Map<String, dynamic> json) {
-    var productsList = json['products'] as List? ?? [];
-    var articlesList = json['articles'] as List? ?? [];
-    var categoriesList = json['categories'] as List? ?? [];
-    return AppData(
-      products: productsList.map((i) => Product.fromJson(i)).toList(),
-      articles: articlesList.map((i) => Article.fromJson(i)).toList(),
-      categories: categoriesList.map((i) => i.toString()).toList(),
-    );
-  }
-}
-
-class Product {
-  final int id;
-  final String name;
-  final String description;
-  final String image;
-  final int price;
-  final int points;
-  final String category;
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.image,
-    required this.price,
-    required this.points,
-    required this.category,
-  });
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      image: json['image'],
-      price: json['price'] ?? 0,
-      points: json['points'] ?? json['price'] ?? 0, // Fallback на старую цену
-      category: json['category'] ?? '',
-    );
-  }
-}
-
-class Article {
-  final int id;
-  final String title;
-  final String content;
-  final String image;
-
-  Article({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.image,
-  });
-
-  factory Article.fromJson(Map<String, dynamic> json) {
-    return Article(
-      id: json['id'],
-      title: json['title'],
-      content: json['content'],
-      image: json['image'] ?? '',
-    );
-  }
-}
-
-// --- Менеджер данных (Загрузка и Синхронизация) ---
-class DataManager {
-  // ВАЖНО: Замените на вашу прямую ссылку до папки на GitHub
-  final String repoUrl =
-      "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main";
-  final String fileName = "data.json";
-
-  int remoteAppVersion = 1;
-  String appUpdateUrl = "";
-
-  Future<AppData> getLocalData() async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$fileName');
-
-      if (await file.exists()) {
-        final jsonString = await file.readAsString();
-        final jsonMap = jsonDecode(jsonString);
-        return AppData.fromJson(jsonMap);
-      }
-    } catch (e) {
-      debugPrint("Ошибка чтения локального файла: $e");
-    }
-    return AppData(products: [], articles: [], categories: []);
-  }
-
-  Future<bool> syncWithGitHub() async {
-    try {
-      // Добавляем текущее время, чтобы сбросить жесткий кэш GitHub
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-
-      final versionResponse = await http.get(
-        Uri.parse('$repoUrl/version.json?t=$timestamp'),
-      );
-      if (versionResponse.statusCode == 200) {
-        final versionData = jsonDecode(versionResponse.body);
-        final remoteVersion = versionData['version'];
-        remoteAppVersion = versionData['app_version'] ?? 1;
-        appUpdateUrl = versionData['app_update_url'] ?? "";
-
-        final prefs = await SharedPreferences.getInstance();
-        final localVersion = prefs.getInt('version') ?? 0;
-
-        if (remoteVersion > localVersion) {
-          final dataResponse = await http.get(
-            Uri.parse('$repoUrl/data.json?t=$timestamp'),
-          );
-          if (dataResponse.statusCode == 200) {
-            final directory = await getApplicationDocumentsDirectory();
-            final file = File('${directory.path}/$fileName');
-
-            await file.writeAsString(dataResponse.body);
-            await prefs.setInt('version', remoteVersion);
-            return true;
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint("Ошибка синхронизации (нет интернета): $e");
-    }
-    return false;
-  }
-}
+import 'models.dart';
+import 'data_manager.dart';
 
 void main() {
   runApp(const MyApp());
@@ -559,6 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           // Занимает всё оставшееся место
                                           child: Text(
                                             product.description,
+                                            textAlign: TextAlign.center,
                                             maxLines:
                                                 4, // Оптимальное количество строк для оставшегося пространства
                                             overflow: TextOverflow
@@ -588,90 +447,143 @@ class _HomeScreenState extends State<HomeScreen> {
       // Вкладка со статьями
       return RefreshIndicator(
         onRefresh: _loadData,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: appData.articles.length,
-          itemBuilder: (context, index) {
-            final article = appData.articles[index];
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+        child: appData.articles.isEmpty
+            ? ListView(
+                children: const [
+                  Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(
+                      child: Text(
+                        'Статьи не найдены',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ArticleDetailScreen(article: article),
-                    ),
-                  );
-                },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (article.image.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(16),
+              )
+            : GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.65, // Пропорции для статей (без цены)
+                ),
+                itemCount: appData.articles.length,
+                itemBuilder: (context, index) {
+                  final article = appData.articles[index];
+                  final imageUrl = article.image.isNotEmpty
+                      ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
+                      : "";
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ArticleDetailScreen(article: article),
                         ),
-                        child: CachedNetworkImage(
-                          imageUrl:
-                              "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
-                          height: 160,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => const SizedBox(
-                            height: 160,
-                            child: Center(child: CircularProgressIndicator()),
-                          ),
-                          errorWidget: (context, url, error) => const SizedBox(
-                            height: 160,
-                            child: Icon(Icons.broken_image),
-                          ),
+                      );
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            article.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
                             ),
+                            child: imageUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    height: 160,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) =>
+                                        const SizedBox(
+                                          height: 160,
+                                          child: Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                    errorWidget: (context, url, error) =>
+                                        const SizedBox(
+                                          height: 160,
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 50,
+                                          ),
+                                        ),
+                                  )
+                                : const SizedBox(
+                                    height: 160,
+                                    width: double.infinity,
+                                    child: Icon(
+                                      Icons.article,
+                                      size: 50,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            article.content,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Center(
+                                    child: Text(
+                                      article.title,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Expanded(
+                                    child: Text(
+                                      article.content,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 4,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
-        ),
       );
     }
   }
@@ -749,64 +661,62 @@ class ProductDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            height: 1.2,
-                          ),
-                        ),
+                  Center(
+                    child: Text(
+                      product.name,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
                       ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Цена: ${product.price} ₽',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                  Center(
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Цена: ${product.price} ₽',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
                           ),
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Баллы: ${product.points}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Баллы: ${product.points}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
                   const Text(
@@ -851,23 +761,19 @@ class ArticleDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (article.image.isNotEmpty)
-              Container(
-                color: const Color(0xFFF8F9FA),
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: CachedNetworkImage(
-                  imageUrl:
-                      "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
-                  width: double.infinity,
-                  height: 250,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => const SizedBox(
-                    height: 250,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => const SizedBox(
-                    height: 250,
-                    child: Icon(Icons.broken_image, size: 50),
-                  ),
+              CachedNetworkImage(
+                imageUrl:
+                    "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
+                width: double.infinity,
+                height: 350,
+                fit: BoxFit.cover, // Растягиваем на весь экран
+                placeholder: (context, url) => const SizedBox(
+                  height: 350,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  height: 350,
+                  child: Icon(Icons.broken_image, size: 100),
                 ),
               ),
             Container(
@@ -875,7 +781,9 @@ class ArticleDetailScreen extends StatelessWidget {
                   ? Matrix4.translationValues(0, -20, 0)
                   : null,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(
+                  context,
+                ).scaffoldBackgroundColor, // Цвет фона как у товаров
                 borderRadius: article.image.isNotEmpty
                     ? const BorderRadius.vertical(top: Radius.circular(24))
                     : null,
@@ -884,12 +792,15 @@ class ArticleDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    article.title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3,
+                  Center(
+                    child: Text(
+                      article.title,
+                      textAlign: TextAlign.center, // Заголовок по центру
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -897,7 +808,7 @@ class ArticleDetailScreen extends StatelessWidget {
                     article.content,
                     style: const TextStyle(
                       fontSize: 16,
-                      height: 1.8,
+                      height: 1.6,
                       color: Colors.black87,
                     ),
                   ),
