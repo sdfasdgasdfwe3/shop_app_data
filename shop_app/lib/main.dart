@@ -192,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      body: _buildBody(),
+      body: RefreshIndicator(onRefresh: _loadData, child: _buildBody()),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
