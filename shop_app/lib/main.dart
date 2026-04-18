@@ -408,8 +408,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     )
-                  : ListView.builder(
+                  : GridView.builder(
                       padding: const EdgeInsets.all(16),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio:
+                            0.48, // Увеличили высоту карточки для крупного текста
+                      ),
                       itemCount: filteredProducts.length,
                       itemBuilder: (context, index) {
                         final product = filteredProducts[index];
@@ -427,7 +434,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                           child: Container(
-                            margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
@@ -443,101 +449,119 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(20),
-                                  ),
-                                  child: CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    height: 160,
-                                    width: double.infinity,
-                                    fit: BoxFit.contain,
-                                    placeholder: (context, url) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Center(
-                                            child: CircularProgressIndicator(),
-                                          ),
+                                Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(20),
+                                      ),
+                                      child: CachedNetworkImage(
+                                        imageUrl: imageUrl,
+                                        height: 160,
+                                        width: double.infinity,
+                                        fit: BoxFit
+                                            .cover, // Растягиваем на всю ширину
+                                        placeholder: (context, url) =>
+                                            const SizedBox(
+                                              height: 160,
+                                              child: Center(
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              ),
+                                            ),
+                                        errorWidget: (context, url, error) =>
+                                            const SizedBox(
+                                              height: 160,
+                                              child: Icon(
+                                                Icons.broken_image,
+                                                size: 50,
+                                              ),
+                                            ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.share,
+                                          color: Colors.blue,
+                                          size: 20,
                                         ),
-                                    errorWidget: (context, url, error) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Icon(
-                                            Icons.broken_image,
-                                            size: 50,
-                                          ),
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: Colors.white
+                                              .withOpacity(0.9),
+                                          padding: const EdgeInsets.all(8),
+                                          minimumSize: const Size(36, 36),
                                         ),
-                                  ),
+                                        onPressed: () {
+                                          final shareText =
+                                              '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}\n\n🖼️ Фото: $imageUrl';
+                                          Share.share(shareText);
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.all(12.0),
+                                  padding: const EdgeInsets.all(10.0),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         product.name,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue.withOpacity(
-                                                0.1,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              'Цена: ${product.price} ₽',
-                                              style: const TextStyle(
-                                                color: Colors.blue,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.orange.withOpacity(
-                                                0.1,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              'Баллы: ${product.points}',
-                                              style: TextStyle(
-                                                color: Colors.orange.shade800,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        product.description,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 14,
+                                        style: const TextStyle(
+                                          fontSize:
+                                              16, // Увеличили шрифт названия
+                                          fontWeight: FontWeight.bold,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Цена: ${product.price} ₽',
+                                          style: const TextStyle(
+                                            color: Colors.blue,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize:
+                                                14, // Увеличили шрифт цены
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Баллы: ${product.points}',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade800,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize:
+                                                14, // Увеличили шрифт баллов
+                                          ),
                                         ),
                                       ),
                                     ],
