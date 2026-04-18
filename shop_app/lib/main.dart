@@ -161,6 +161,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'НПК ИНФИНИТИ',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
@@ -437,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.grey.shade200),
+                              border: Border.all(color: Colors.grey.shade300, width: 1.5), // Усилили обводку
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.08),
@@ -449,59 +450,32 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(20),
-                                      ),
-                                      child: CachedNetworkImage(
-                                        imageUrl: imageUrl,
-                                        height: 160,
-                                        width: double.infinity,
-                                        fit: BoxFit
-                                            .cover, // Растягиваем на всю ширину
-                                        placeholder: (context, url) =>
-                                            const SizedBox(
-                                              height: 160,
-                                              child: Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
-                                            ),
-                                        errorWidget: (context, url, error) =>
-                                            const SizedBox(
-                                              height: 160,
-                                              child: Icon(
-                                                Icons.broken_image,
-                                                size: 50,
-                                              ),
-                                            ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 4,
-                                      right: 4,
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          Icons.share,
-                                          color: Colors.blue,
-                                          size: 20,
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(20),
+                                  ),
+                                  child: CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    height: 160,
+                                    width: double.infinity,
+                                    fit: BoxFit
+                                        .cover, // Растягиваем на всю ширину
+                                    placeholder: (context, url) =>
+                                        const SizedBox(
+                                          height: 160,
+                                          child: Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
                                         ),
-                                        style: IconButton.styleFrom(
-                                          backgroundColor: Colors.white
-                                              .withOpacity(0.9),
-                                          padding: const EdgeInsets.all(8),
-                                          minimumSize: const Size(36, 36),
+                                    errorWidget: (context, url, error) =>
+                                        const SizedBox(
+                                          height: 160,
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 50,
+                                          ),
                                         ),
-                                        onPressed: () {
-                                          final shareText =
-                                              '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}\n\n🖼️ Фото: $imageUrl';
-                                          Share.share(shareText);
-                                        },
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.all(10.0),
@@ -514,55 +488,33 @@ class _HomeScreenState extends State<HomeScreen> {
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          fontSize:
-                                              16, // Увеличили шрифт названия
+                                          fontSize: 18, // Увеличили шрифт названия
                                           fontWeight: FontWeight.bold,
                                           height: 1.2,
                                         ),
                                       ),
-                                      const SizedBox(height: 12),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            6,
+                                      const SizedBox(height: 10),
+                                      Wrap(
+                                        spacing: 6, // Отступ между ценниками
+                                        runSpacing: 6,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                            child: Text(
+                                              '${product.price} ₽',
+                                              style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
                                           ),
-                                        ),
-                                        child: Text(
-                                          'Цена: ${product.price} ₽',
-                                          style: const TextStyle(
-                                            color: Colors.blue,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize:
-                                                14, // Увеличили шрифт цены
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                            child: Text(
+                                              '${product.points} баллов',
+                                              style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          'Баллы: ${product.points}',
-                                          style: TextStyle(
-                                            color: Colors.orange.shade800,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize:
-                                                14, // Увеличили шрифт баллов
-                                          ),
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -688,10 +640,26 @@ class ProductDetailScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () {
+            onPressed: () async {
               final shareText =
-                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}\n\n🖼️ Фото: $imageUrl';
-              Share.share(shareText);
+                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}';
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Загрузка фото для отправки...'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+              try {
+                final response = await http.get(Uri.parse(imageUrl));
+                final tempDir = await getTemporaryDirectory();
+                final file = await File(
+                  '${tempDir.path}/share_${product.image}',
+                ).create();
+                await file.writeAsBytes(response.bodyBytes);
+                await Share.shareXFiles([XFile(file.path)], text: shareText);
+              } catch (e) {
+                Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
+              }
             },
           ),
         ],
@@ -700,22 +668,18 @@ class ProductDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              color: const Color(0xFFF8F9FA), // Светло-серый фон
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: double.infinity,
-                height: 320,
-                fit: BoxFit.contain, // Чтобы не обрезалось
-                placeholder: (context, url) => const SizedBox(
-                  height: 320,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const SizedBox(
-                  height: 320,
-                  child: Icon(Icons.broken_image, size: 100),
-                ),
+            CachedNetworkImage(
+              imageUrl: imageUrl,
+              width: double.infinity,
+              height: 350,
+              fit: BoxFit.cover, // Растягиваем фото от края до края
+              placeholder: (context, url) => const SizedBox(
+                height: 350,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (context, url, error) => const SizedBox(
+                height: 350,
+                child: Icon(Icons.broken_image, size: 100),
               ),
             ),
             Container(
@@ -747,7 +711,9 @@ class ProductDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -767,7 +733,6 @@ class ProductDetailScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -830,6 +795,66 @@ class ArticleDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (article.image.isNotEmpty)
+              Container(
+                color: const Color(0xFFF8F9FA),
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: CachedNetworkImage(
+                  imageUrl:
+                      "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}",
+                  width: double.infinity,
+                  height: 250,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const SizedBox(
+                    height: 250,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => const SizedBox(
+                    height: 250,
+                    child: Icon(Icons.broken_image, size: 50),
+                  ),
+                ),
+              ),
+            Container(
+              transform: article.image.isNotEmpty
+                  ? Matrix4.translationValues(0, -20, 0)
+                  : null,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: article.image.isNotEmpty
+                    ? const BorderRadius.vertical(top: Radius.circular(24))
+                    : null,
+              ),
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article.title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    article.content,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.8,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
             if (article.image.isNotEmpty)
               Container(
                 color: const Color(0xFFF8F9FA),
