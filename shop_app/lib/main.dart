@@ -484,7 +484,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: Padding(
                                     padding: const EdgeInsets.all(10.0),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
                                       children: [
                                         Center(
                                           child: Text(
@@ -502,17 +503,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const SizedBox(height: 10),
                                         FittedBox(
                                           fit: BoxFit.scaleDown,
-                                          alignment: Alignment.center, // Выровняли ценники по центру!
+                                          alignment: Alignment
+                                              .center, // Выровняли ценники по центру!
                                           child: Row(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 4,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(6),
+                                                  color: Colors.blue
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
                                                 ),
                                                 child: Text(
                                                   '${product.price} ₽',
@@ -525,18 +530,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                               ),
                                               const SizedBox(width: 6),
                                               Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 4,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.orange.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(6),
+                                                  color: Colors.orange
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
                                                 ),
                                                 child: Text(
                                                   '${product.points} баллов',
                                                   style: TextStyle(
-                                                    color: Colors.orange.shade800,
+                                                    color:
+                                                        Colors.orange.shade800,
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 13,
                                                   ),
@@ -546,11 +555,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 8),
-                                        Expanded( // Занимает всё оставшееся место
+                                        Expanded(
+                                          // Занимает всё оставшееся место
                                           child: Text(
                                             product.description,
-                                            maxLines: 4, // Оптимальное количество строк для оставшегося пространства
-                                            overflow: TextOverflow.ellipsis, // Аккуратно обрезает многоточием
+                                            maxLines:
+                                                4, // Оптимальное количество строк для оставшегося пространства
+                                            overflow: TextOverflow
+                                                .ellipsis, // Аккуратно обрезает многоточием
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: Colors.grey.shade600,
