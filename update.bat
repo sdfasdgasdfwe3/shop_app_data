@@ -1,12 +1,19 @@
 @echo off
-chcp 65001 > nul
 echo Starting GitHub synchronization...
 
 rem Add all changed and new files
-git add .
+git add .gitignore
+git add data.json
+git add version.json
+git add update.bat
+if exist images\ git add images\
+if exist shop_app\ git add shop_app\
+
+rem Remove admin.html from GitHub if it was pushed before
+git rm --cached admin.html >nul 2>&1
 
 rem Create a commit with the current date and time
-git commit -m "Auto-update products database: %date% %time%"
+git commit -m "Auto-update database and code: %date% %time%"
 if %errorlevel% neq 0 (
     echo.
     echo No changes found to commit.
