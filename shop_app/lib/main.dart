@@ -62,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     final localData = await dataManager.getLocalData();
+    localData.products.shuffle(); // Перемешиваем товары при загрузке
     setState(() {
       appData = localData;
       isLoading = localData.products.isEmpty && localData.articles.isEmpty;
@@ -78,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (isUpdated) {
       final newData = await dataManager.getLocalData();
+      newData.products.shuffle(); // Перемешиваем свежие товары после обновления
       setState(() {
         appData = newData;
         isLoading = false;
