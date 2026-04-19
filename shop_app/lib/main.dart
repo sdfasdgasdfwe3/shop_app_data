@@ -144,6 +144,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
+            if (index == 0) {
+              appData.products.shuffle();
+            }
           });
         },
         items: const [
@@ -239,8 +242,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               : Colors.black87,
                         ),
                         onSelected: (selected) {
-                          if (selected)
-                            setState(() => _selectedCategory = category);
+                          if (selected) {
+                            setState(() {
+                              _selectedCategory = category;
+                              appData.products.shuffle();
+                            });
+                          }
                         },
                       ),
                     ),
@@ -854,5 +861,8 @@ class ArticleDetailScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
   }
 }
