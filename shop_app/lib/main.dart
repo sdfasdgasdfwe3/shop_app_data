@@ -56,15 +56,22 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 5; // Текущая версия этого приложения
+  final int _currentAppVersion = 6; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -223,6 +230,10 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _selectedIndex,
         onTap: (index) {
           setState(() {
+            if (_selectedIndex != index) {
+              _searchQuery = ''; // Очищаем поиск при смене вкладки
+              _searchController.clear();
+            }
             _selectedIndex = index;
           });
         },
@@ -266,31 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Панель поиска
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Поиск товаров...',
-                prefixIcon: const Icon(Icons.search, color: Colors.blue),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Colors.blue, width: 2),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-            ),
-          ),
+          _buildSearchBar('Поиск товаров...'),
           // 2. Горизонтальная лента Разделов
           if (appData.categories.isNotEmpty)
             SingleChildScrollView(
@@ -538,290 +525,356 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     } else if (_selectedIndex == 1) {
       // Вкладка со статьями
-      return RefreshIndicator(
-        onRefresh: _loadData,
-        child: appData.articles.isEmpty
-            ? ListView(
-                children: const [
-                  Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Center(
-                      child: Text(
-                        'Статьи не найдены',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.65, // Пропорции для статей (без цены)
-                ),
-                itemCount: appData.articles.length,
-                itemBuilder: (context, index) {
-                  final article = appData.articles[index];
-                  final imageUrl = article.image.isNotEmpty
-                      ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
-                      : "";
+      var filteredArticles = appData.articles.where((a) {
+        return a.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            a.content.toLowerCase().contains(_searchQuery.toLowerCase());
+      }).toList();
 
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ArticleDetailScreen(article: article),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.grey.shade300,
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                            child: imageUrl.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    height: 160,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Center(
-                                            child: CircularProgressIndicator(),
-                                          ),
-                                        ),
-                                    errorWidget: (context, url, error) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Icon(
-                                            Icons.broken_image,
-                                            size: 50,
-                                          ),
-                                        ),
-                                  )
-                                : const SizedBox(
-                                    height: 160,
-                                    width: double.infinity,
-                                    child: Icon(
-                                      Icons.article,
-                                      size: 50,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(10.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Center(
-                                    child: Text(
-                                      article.title,
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Expanded(
-                                    child: Text(
-                                      article.content,
-                                      textAlign: TextAlign.center,
-                                      maxLines: 4,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                        height: 1.3,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+      return Column(
+        children: [
+          _buildSearchBar('Поиск статей...'),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadData,
+              child: filteredArticles.isEmpty
+                  ? ListView(
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(
+                            child: Text(
+                              'Статьи не найдены',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio:
+                                0.65, // Пропорции для статей (без цены)
+                          ),
+                      itemCount: filteredArticles.length,
+                      itemBuilder: (context, index) {
+                        final article = filteredArticles[index];
+                        final imageUrl = article.image.isNotEmpty
+                            ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
+                            : "";
+
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ArticleDetailScreen(article: article),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(20),
+                                  ),
+                                  child: imageUrl.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: imageUrl,
+                                          height: 160,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              const SizedBox(
+                                                height: 160,
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              const SizedBox(
+                                                height: 160,
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                ),
+                                              ),
+                                        )
+                                      : const SizedBox(
+                                          height: 160,
+                                          width: double.infinity,
+                                          child: Icon(
+                                            Icons.article,
+                                            size: 50,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Center(
+                                          child: Text(
+                                            article.title,
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Expanded(
+                                          child: Text(
+                                            article.content,
+                                            textAlign: TextAlign.center,
+                                            maxLines: 4,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                              height: 1.3,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+            ),
+          ),
+        ],
       );
     } else {
       // Вкладка с отзывами
-      return RefreshIndicator(
-        onRefresh: _loadData,
-        child: appData.reviews.isEmpty
-            ? ListView(
-                children: const [
-                  Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Center(
-                      child: Text(
-                        'Отзывы не найдены',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.65, // Пропорции как у статей
-                ),
-                itemCount: appData.reviews.length,
-                itemBuilder: (context, index) {
-                  final review = appData.reviews[index];
-                  final imageUrl = review.image.isNotEmpty
-                      ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
-                      : "";
+      var filteredReviews = appData.reviews.where((r) {
+        return r.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            r.content.toLowerCase().contains(_searchQuery.toLowerCase());
+      }).toList();
 
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ReviewDetailScreen(review: review),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.grey.shade300,
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                            child: imageUrl.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    height: 160,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Center(
-                                            child: CircularProgressIndicator(),
-                                          ),
-                                        ),
-                                    errorWidget: (context, url, error) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Icon(
-                                            Icons.broken_image,
-                                            size: 50,
-                                          ),
-                                        ),
-                                  )
-                                : const SizedBox(
-                                    height: 160,
-                                    width: double.infinity,
-                                    child: Icon(
-                                      Icons.rate_review,
-                                      size: 50,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(10.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Center(
-                                    child: Text(
-                                      review
-                                          .title, // В качестве заголовка, например, можно выводить Имя автора
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Expanded(
-                                    child: Text(
-                                      review.content, // Сам текст отзыва
-                                      textAlign: TextAlign.center,
-                                      maxLines: 4,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                        height: 1.3,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+      return Column(
+        children: [
+          _buildSearchBar('Поиск отзывов...'),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadData,
+              child: filteredReviews.isEmpty
+                  ? ListView(
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(
+                            child: Text(
+                              'Отзывы не найдены',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.65, // Пропорции как у статей
+                          ),
+                      itemCount: filteredReviews.length,
+                      itemBuilder: (context, index) {
+                        final review = filteredReviews[index];
+                        final imageUrl = review.image.isNotEmpty
+                            ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
+                            : "";
+
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ReviewDetailScreen(review: review),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(20),
+                                  ),
+                                  child: imageUrl.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: imageUrl,
+                                          height: 160,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              const SizedBox(
+                                                height: 160,
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              const SizedBox(
+                                                height: 160,
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                ),
+                                              ),
+                                        )
+                                      : const SizedBox(
+                                          height: 160,
+                                          width: double.infinity,
+                                          child: Icon(
+                                            Icons.rate_review,
+                                            size: 50,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Center(
+                                          child: Text(
+                                            review
+                                                .title, // В качестве заголовка, например, можно выводить Имя автора
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Expanded(
+                                          child: Text(
+                                            review.content, // Сам текст отзыва
+                                            textAlign: TextAlign.center,
+                                            maxLines: 4,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                              height: 1.3,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+            ),
+          ),
+        ],
       );
     }
+  }
+
+  Widget _buildSearchBar(String hintText) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: hintText,
+          prefixIcon: const Icon(Icons.search, color: Colors.blue),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.blue, width: 2),
+          ),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+      ),
+    );
   }
 }
 
