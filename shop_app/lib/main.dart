@@ -46,10 +46,15 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final DataManager dataManager = DataManager();
-  AppData appData = AppData(products: [], articles: [], categories: []);
+  AppData appData = AppData(
+    products: [],
+    articles: [],
+    categories: [],
+    reviews: [],
+  );
   bool isLoading = true;
-  int _selectedIndex = 0; // 0 - Товары, 1 - Статьи
-  int _currentAppVersion = 1; // Текущая версия этого приложения
+  int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
+  final int _currentAppVersion = 1; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -70,6 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final isUpdated = await dataManager.syncWithGitHub();
 
+    // Защита: проверяем, что экран всё ещё открыт, прежде чем обновлять интерфейс
+    if (!mounted) return;
+
     // Проверяем, не нужно ли обновить само приложение
     if (dataManager.remoteAppVersion > _currentAppVersion &&
         !_updateDialogShown) {
@@ -79,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (isUpdated) {
       final newData = await dataManager.getLocalData();
+      if (!mounted) return;
       newData.products.shuffle(); // Перемешиваем свежие товары после обновления
       setState(() {
         appData = newData;
@@ -155,6 +164,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Товары',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Статьи'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.rate_review),
+            label: 'Отзывы',
+          ),
         ],
       ),
     );
@@ -245,7 +258,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (selected) {
                             setState(() {
                               _selectedCategory = category;
-                              appData.products.shuffle();
                             });
                           }
                         },
@@ -452,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       );
-    } else {
+    } else if (_selectedIndex == 1) {
       // Вкладка со статьями
       return RefreshIndicator(
         onRefresh: _loadData,
@@ -573,6 +585,149 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Expanded(
                                     child: Text(
                                       article.content,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 4,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+      );
+    } else {
+      // Вкладка с отзывами
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: appData.reviews.isEmpty
+            ? ListView(
+                children: const [
+                  Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(
+                      child: Text(
+                        'Отзывы не найдены',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.65, // Пропорции как у статей
+                ),
+                itemCount: appData.reviews.length,
+                itemBuilder: (context, index) {
+                  final review = appData.reviews[index];
+                  final imageUrl = review.image.isNotEmpty
+                      ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
+                      : "";
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ReviewDetailScreen(review: review),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                            child: imageUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    height: 160,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) =>
+                                        const SizedBox(
+                                          height: 160,
+                                          child: Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                    errorWidget: (context, url, error) =>
+                                        const SizedBox(
+                                          height: 160,
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 50,
+                                          ),
+                                        ),
+                                  )
+                                : const SizedBox(
+                                    height: 160,
+                                    width: double.infinity,
+                                    child: Icon(
+                                      Icons.rate_review,
+                                      size: 50,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Center(
+                                    child: Text(
+                                      review
+                                          .title, // В качестве заголовка, например, можно выводить Имя автора
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Expanded(
+                                    child: Text(
+                                      review.content, // Сам текст отзыва
                                       textAlign: TextAlign.center,
                                       maxLines: 4,
                                       overflow: TextOverflow.ellipsis,
@@ -751,6 +906,119 @@ class ProductDetailScreen extends StatelessWidget {
   }
 }
 
+// --- Экран детализации отзыва ---
+class ReviewDetailScreen extends StatelessWidget {
+  final Article review;
+  const ReviewDetailScreen({super.key, required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = review.image.isNotEmpty
+        ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
+        : "";
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Отзыв',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () async {
+              final shareText = '💬 ${review.title}\n\n${review.content}';
+
+              if (imageUrl.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Загрузка фото для отправки...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                try {
+                  final response = await http.get(Uri.parse(imageUrl));
+                  final tempDir = await getTemporaryDirectory();
+                  final file = await File(
+                    '${tempDir.path}/share_${review.image}',
+                  ).create();
+                  await file.writeAsBytes(response.bodyBytes);
+                  await Share.shareXFiles([XFile(file.path)], text: shareText);
+                } catch (e) {
+                  Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
+                }
+              } else {
+                Share.share(shareText);
+              }
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (review.image.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: double.infinity,
+                height: 350,
+                fit: BoxFit.cover, // Растягиваем на весь экран
+                placeholder: (context, url) => const SizedBox(
+                  height: 350,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  height: 350,
+                  child: Icon(Icons.broken_image, size: 100),
+                ),
+              ),
+            Container(
+              transform: review.image.isNotEmpty
+                  ? Matrix4.translationValues(0, -20, 0)
+                  : null,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).scaffoldBackgroundColor, // Цвет фона как у товаров
+                borderRadius: review.image.isNotEmpty
+                    ? const BorderRadius.vertical(top: Radius.circular(24))
+                    : null,
+              ),
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      review.title,
+                      textAlign: TextAlign.center, // Заголовок по центру
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    review.content,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // --- Экран детализации статьи ---
 class ArticleDetailScreen extends StatelessWidget {
   final Article article;
@@ -861,8 +1129,5 @@ class ArticleDetailScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
   }
 }

@@ -2,21 +2,25 @@ class AppData {
   final List<Product> products;
   final List<Article> articles;
   final List<String> categories;
+  final List<Article> reviews;
 
   AppData({
     required this.products,
     required this.articles,
     required this.categories,
+    required this.reviews,
   });
 
   factory AppData.fromJson(Map<String, dynamic> json) {
     var productsList = json['products'] as List? ?? [];
     var articlesList = json['articles'] as List? ?? [];
     var categoriesList = json['categories'] as List? ?? [];
+    var reviewsList = json['reviews'] as List? ?? [];
     return AppData(
       products: productsList.map((i) => Product.fromJson(i)).toList(),
       articles: articlesList.map((i) => Article.fromJson(i)).toList(),
       categories: categoriesList.map((i) => i.toString()).toList(),
+      reviews: reviewsList.map((i) => Article.fromJson(i)).toList(),
     );
   }
 }

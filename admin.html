@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель Магазина</title>
+    <!-- Подключаем стили и логику -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 p-8 font-sans">
+
+<div id="app" class="max-w-5xl mx-auto">
+    <!-- Шапка -->
+    <div class="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm">
+        <h1 class="text-3xl font-extrabold text-blue-600">Админ-панель</h1>
+        
+        <button v-if="!folderHandle" @click="connectFolder" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-md font-bold transition">
+            📂 Открыть папку mob_app
+        </button>
+        
+        <div v-else class="flex items-center space-x-6">
+            <span class="text-emerald-600 font-bold flex items-center">
+                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Папка подключена
+            </span>
+            <button @click="saveData" class="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-md font-bold transition flex items-center">
+                💾 Сохранить изменения
+            </button>
+        </div>
+    </div>
+
+    <!-- Основной контент (показывается только если папка подключена) -->
+    <div v-if="folderHandle" class="bg-white rounded-2xl shadow-sm p-6">
+        
+        <!-- Вкладки -->
+        <div class="flex space-x-6 border-b-2 border-slate-100 pb-4 mb-6">
+            <button @click="tab = 'products'" :class="tab === 'products' ? 'text-blue-600 border-b-2 border-blue-600 font-bold translate-y-[18px]' : 'text-slate-400 font-medium'" class="pb-4 px-2 transition">📦 Товары</button>
+            <button @click="tab = 'articles'" :class="tab === 'articles' ? 'text-blue-600 border-b-2 border-blue-600 font-bold translate-y-[18px]' : 'text-slate-400 font-medium'" class="pb-4 px-2 transition">📝 Статьи</button>
+            <button @click="tab = 'categories'" :class="tab === 'categories' ? 'text-blue-600 border-b-2 border-blue-600 font-bold translate-y-[18px]' : 'text-slate-400 font-medium'" class="pb-4 px-2 transition">🗂️ Разделы</button>
+        </div>
+        
+        <!-- Настройки приложения -->
+        <div class="mb-6 flex gap-6 bg-blue-50 p-5 rounded-xl border border-blue-100">
+            <div class="w-1/4">
+                <label class="text-xs font-bold text-blue-800 uppercase mb-1 block">Версия приложения (APK)</label>
+                <input v-model.number="versionData.app_version" type="number" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold bg-white">
+            </div>
+            <div class="w-3/4">
+                <label class="text-xs font-bold text-blue-800 uppercase mb-1 block">Ссылка на скачивание нового APK</label>
+                <input v-model="versionData.app_update_url" placeholder="https://github.com/..." class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            </div>
+        </div>
+        
+        <!-- Вкладка: Категории -->
+        <div v-if="tab === 'categories'">
+            <button @click="addCategory" class="mb-6 bg-blue-50 text-blue-700 font-bold px-4 py-2 rounded-lg hover:bg-blue-100 transition">+ Добавить раздел</button>
+            <div class="space-y-4">
+                <div v-for="(cat, index) in data.categories" :key="'cat'+index" class="flex gap-4 items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div class="flex flex-col gap-1">
+                        <button @click="moveCategoryUp(index)" :disabled="index === 0" class="text-slate-400 hover:text-blue-500 disabled:opacity-30 disabled:hover:text-slate-400 transition" title="Вверх">▲</button>
+                        <button @click="moveCategoryDown(index)" :disabled="index === data.categories.length - 1" class="text-slate-400 hover:text-blue-500 disabled:opacity-30 disabled:hover:text-slate-400 transition" title="Вниз">▼</button>
+                    </div>
+                    <span class="text-slate-400 font-bold text-lg cursor-move">☰</span>
+                    <input v-model="data.categories[index]" placeholder="Название раздела (например, Сиропы)" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold bg-white">
+                    <button @click="data.categories.splice(index, 1)" class="text-red-500 hover:text-red-700 font-bold px-4 py-2">🗑️ Удалить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: Товары -->
+        <div v-if="tab === 'products'">
+            <button @click="addProduct" class="mb-6 bg-blue-50 text-blue-700 font-bold px-4 py-2 rounded-lg hover:bg-blue-100 transition">
+                + Добавить товар
+            </button>
+            <div class="space-y-6">
+                <div v-for="(item, index) in data.products" :key="item.id" class="border border-slate-200 p-5 rounded-xl bg-slate-50 flex gap-6 relative group">
+                    <div class="flex-1 space-y-4">
+                        <div>
+                            <label class="text-xs text-slate-500 font-bold uppercase mb-1 block">Фото</label>
+                            <div class="flex gap-2">
+                                <input v-model="item.image" placeholder="Например: photo1.jpg" class="w-full p-3 border border-slate-300 rounded-lg outline-none bg-white">
+                                <label class="bg-slate-200 text-slate-700 px-4 py-3 rounded-lg cursor-pointer hover:bg-slate-300 transition font-medium flex items-center whitespace-nowrap">
+                                    🖼️ Загрузить
+                                    <input type="file" @change="uploadImage($event, item)" class="hidden" accept="image/*">
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="text-xs text-slate-500 font-bold uppercase mb-1 block">Название товара</label>
+                            <input v-model="item.name" placeholder="Название товара" class="w-full p-3 border border-slate-300 rounded-lg font-bold text-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+
+                        <div class="flex gap-4">
+                            <div class="w-1/3">
+                                <label class="text-xs text-slate-500 font-bold uppercase mb-1 block">Цена (руб)</label>
+                                <input v-model.number="item.price" type="number" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold">
+                            </div>
+                            <div class="w-1/3">
+                                <label class="text-xs text-slate-500 font-bold uppercase mb-1 block">Баллы</label>
+                                <input v-model.number="item.points" type="number" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold">
+                            </div>
+                            <div class="w-1/3">
+                                <label class="text-xs text-slate-500 font-bold uppercase mb-1 block">Раздел</label>
+                                <select v-model="item.category" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold bg-white">
+                                    <option value="">Без раздела</option>
+                                    <option v-for="cat in data.categories" :value="cat">{{ cat }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-xs text-slate-500 font-bold uppercase mb-1 block">Описание</label>
+                            <textarea v-model="item.description" placeholder="Подробное описание..." class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <button @click="data.products.splice(index, 1)" class="absolute top-4 right-4 text-red-400 hover:text-red-600 bg-white p-2 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition">
+                        🗑️ Удалить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: Статьи -->
+        <div v-if="tab === 'articles'">
+            <button @click="addArticle" class="mb-6 bg-blue-50 text-blue-700 font-bold px-4 py-2 rounded-lg hover:bg-blue-100 transition">
+                + Добавить статью
+            </button>
+            <div class="space-y-6">
+                <div v-for="(item, index) in data.articles" :key="item.id" class="border border-slate-200 p-5 rounded-xl bg-slate-50 relative group">
+                    <div class="mb-4">
+                        <label class="text-xs text-slate-500 font-bold uppercase mb-1 block">Фото статьи</label>
+                        <div class="flex gap-2">
+                            <input v-model="item.image" placeholder="Необязательно. Например: news1.jpg" class="w-full p-3 border border-slate-300 rounded-lg outline-none bg-white">
+                            <label class="bg-slate-200 text-slate-700 px-4 py-3 rounded-lg cursor-pointer hover:bg-slate-300 transition font-medium flex items-center whitespace-nowrap">
+                                🖼️ Загрузить
+                                <input type="file" @change="uploadImage($event, item)" class="hidden" accept="image/*">
+                            </label>
+                        </div>
+                    </div>
+                    <input v-model="item.title" placeholder="Заголовок статьи" class="w-full p-3 border border-slate-300 rounded-lg font-bold text-lg mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+                    <textarea v-model="item.content" placeholder="Текст статьи..." class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" rows="6"></textarea>
+                    
+                    <button @click="data.articles.splice(index, 1)" class="absolute top-4 right-4 text-red-400 hover:text-red-600 bg-white p-2 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition">
+                        🗑️ Удалить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                folderHandle: null,
+                tab: 'products',
+                data: { categories: [], products: [], articles: [] },
+                versionData: { version: 1, app_version: 1, app_update_url: "" }
+            }
+        },
+        methods: {
+            async getFileJSON(handle, name) {
+                try {
+                    const fileHandle = await handle.getFileHandle(name);
+                    const file = await fileHandle.getFile();
+                    return JSON.parse(await file.text());
+                } catch (e) {
+                    return null; // Файла нет или ошибка чтения
+                }
+            },
+            async connectFolder() {
+                try {
+                    // Запрашиваем доступ к папке с правом на чтение и запись
+                    this.folderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    
+                    // Читаем data.json
+                    const loadedData = await this.getFileJSON(this.folderHandle, 'data.json');
+                    if (loadedData) {
+                        this.data.categories = loadedData.categories || [];
+                        this.data.products = loadedData.products || [];
+                        this.data.articles = loadedData.articles || [];
+                    }
+                    
+                    // Читаем version.json
+                    const loadedVersion = await this.getFileJSON(this.folderHandle, 'version.json');
+                    if (loadedVersion) this.versionData = loadedVersion;
+                    
+                } catch (e) {
+                    console.error(e);
+                    alert('Доступ к папке не предоставлен.');
+                }
+            },
+            async saveData() {
+                try {
+                    // 1. Автоматически увеличиваем версию
+                    this.versionData.version = (this.versionData.version || 0) + 1;
+                    this.versionData.last_updated = new Date().toISOString().split('T')[0];
+
+                    // 2. Перезаписываем data.json
+                    const dataHandle = await this.folderHandle.getFileHandle('data.json', { create: true });
+                    const dataWritable = await dataHandle.createWritable();
+                    await dataWritable.write(JSON.stringify(this.data, null, 2));
+                    await dataWritable.close();
+
+                    // 3. Перезаписываем version.json
+                    const versionHandle = await this.folderHandle.getFileHandle('version.json', { create: true });
+                    const versionWritable = await versionHandle.createWritable();
+                    await versionWritable.write(JSON.stringify(this.versionData, null, 2));
+                    await versionWritable.close();
+
+                    alert('✅ Сохранено успешно!\n\nВерсия базы данных повышена до ' + this.versionData.version + '.\nТеперь запустите файл update.bat, чтобы изменения улетели в приложение!');
+                } catch (e) {
+                    console.error(e);
+                    alert('❌ Ошибка при сохранении данных. Проверьте права.');
+                }
+            },
+            addProduct() {
+                const newId = this.data.products.length ? Math.max(...this.data.products.map(p => p.id)) + 1 : 1;
+                this.data.products.unshift({ id: newId, name: '', description: '', image: '', price: 0, points: 0, category: '' });
+            },
+            addArticle() {
+                const newId = this.data.articles.length ? Math.max(...this.data.articles.map(a => a.id)) + 1 : 1;
+                this.data.articles.unshift({ id: newId, title: '', content: '', image: '' });
+            },
+            addCategory() {
+                this.data.categories.unshift('');
+            },
+            moveCategoryUp(index) {
+                if (index > 0) {
+                    const temp = this.data.categories[index];
+                    this.data.categories.splice(index, 1);
+                    this.data.categories.splice(index - 1, 0, temp);
+                }
+            },
+            moveCategoryDown(index) {
+                if (index < this.data.categories.length - 1) {
+                    const temp = this.data.categories[index];
+                    this.data.categories.splice(index, 1);
+                    this.data.categories.splice(index + 1, 0, temp);
+                }
+            },
+            async uploadImage(event, item) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                try {
+                    // Создаем/открываем папку images внутри mob_app
+                    const imagesDir = await this.folderHandle.getDirectoryHandle('images', { create: true });
+                    
+                    // Копируем туда выбранный файл
+                    const imgHandle = await imagesDir.getFileHandle(file.name, { create: true });
+                    const writable = await imgHandle.createWritable();
+                    await writable.write(file);
+                    await writable.close();
+
+                    // Записываем имя файла в поле товара
+                    item.image = file.name;
+                    alert(`📸 Картинка "${file.name}" успешно сохранена в папку images!`);
+                } catch (e) {
+                    console.error(e);
+                    alert('❌ Ошибка при копировании картинки.');
+                }
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

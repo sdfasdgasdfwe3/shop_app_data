@@ -29,7 +29,7 @@ class DataManager {
     } catch (e) {
       debugPrint("Ошибка чтения локального файла: $e");
     }
-    return AppData(products: [], articles: [], categories: []);
+    return AppData(products: [], articles: [], categories: [], reviews: []);
   }
 
   Future<bool> syncWithGitHub() async {
