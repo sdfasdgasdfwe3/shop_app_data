@@ -189,13 +189,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             progress = 0.0;
                           });
 
-                          // Защита: Если скачанный файл весит меньше 1 МБ, значит по ссылке скачалась веб-страница с ошибкой (битая ссылка)
-                          if (bytes.length < 1000000) {
+                          // Защита: Проверяем, что файл скачался полностью (сравниваем с сервером или требуем минимум 15 МБ)
+                          if ((contentLength > 1 &&
+                                  bytes.length < contentLength) ||
+                              bytes.length < 15000000) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                    'Ошибка файла. Открываем в браузере...',
+                                    'Файл поврежден (сбой сети). Открываем в браузере...',
                                   ),
                                 ),
                               );

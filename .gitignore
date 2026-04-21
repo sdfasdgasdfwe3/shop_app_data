@@ -7,6 +7,10 @@ shop_app/.dart_tool/
 # Игнорируем админку (чтобы никто не мог скачать ее с GitHub)
 admin.html
 
+# Игнорируем ключи подписи Android
+*.jks
+key.properties
+
 # Игнорируем системные файлы
 Thumbs.db
 .DS_Store
