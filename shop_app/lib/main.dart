@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:open_filex/open_filex.dart';
 
 import 'models.dart';
 import 'data_manager.dart';
@@ -52,9 +53,10 @@ class _HomeScreenState extends State<HomeScreen> {
     categories: [],
     reviews: [],
   );
+  List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 4; // Текущая версия этого приложения
+  final int _currentAppVersion = 5; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -67,9 +69,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     final localData = await dataManager.getLocalData();
-    localData.products.shuffle(); // Перемешиваем товары при загрузке
     setState(() {
       appData = localData;
+      _shuffledProducts = List.from(localData.products)
+        ..shuffle(); // Перемешиваем только копию
       isLoading = localData.products.isEmpty && localData.articles.isEmpty;
     });
 
@@ -88,9 +91,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (isUpdated) {
       final newData = await dataManager.getLocalData();
       if (!mounted) return;
-      newData.products.shuffle(); // Перемешиваем свежие товары после обновления
       setState(() {
         appData = newData;
+        _shuffledProducts = List.from(newData.products)
+          ..shuffle(); // Обновляем копию
         isLoading = false;
       });
     } else {
@@ -99,47 +103,108 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showUpdateDialog(String url) {
+    bool isDownloading = false;
+    double progress = 0.0;
+
     showDialog(
       context: context,
       barrierDismissible:
           false, // Пользователь не сможет закрыть окно мимо кнопки
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.system_update, color: Colors.blue),
-            SizedBox(width: 8),
-            Text(
-              'Обновление',
-              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-          ],
-        ),
-        content: const Text(
-          'Вышла новая версия приложения! Пожалуйста, обновитесь для получения новых функций и стабильной работы.',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () async {
-              final uri = Uri.parse(url);
-              try {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Не удалось открыть браузер для скачивания'),
+            title: const Row(
+              children: [
+                Icon(Icons.system_update, color: Colors.blue),
+                SizedBox(width: 8),
+                Text(
+                  'Обновление',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
                   ),
-                );
-              }
-            },
-            child: const Text('Скачать обновление'),
-          ),
-        ],
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Вышла новая версия приложения! Пожалуйста, обновитесь для получения новых функций и стабильной работы.',
+                  style: TextStyle(fontSize: 16),
+                ),
+                if (isDownloading) ...[
+                  const SizedBox(height: 20),
+                  LinearProgressIndicator(value: progress),
+                  const SizedBox(height: 8),
+                  Text('${(progress * 100).toStringAsFixed(1)} %'),
+                ],
+              ],
+            ),
+            actions: [
+              if (!isDownloading)
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    setState(() {
+                      isDownloading = true;
+                    });
+                    try {
+                      final request = http.Request('GET', Uri.parse(url));
+                      final response = await http.Client().send(request);
+                      final contentLength = response.contentLength ?? 1;
+                      List<int> bytes = [];
+
+                      response.stream.listen(
+                        (List<int> newBytes) {
+                          bytes.addAll(newBytes);
+                          setState(() {
+                            progress = bytes.length / contentLength;
+                          });
+                        },
+                        onDone: () async {
+                          final dir = await getTemporaryDirectory();
+                          final file = File('${dir.path}/update.apk');
+                          await file.writeAsBytes(bytes);
+
+                          // Запускаем установку скачанного файла
+                          await OpenFilex.open(file.path);
+
+                          setState(() {
+                            isDownloading = false;
+                            progress = 0.0;
+                          });
+                        },
+                        onError: (e) {
+                          setState(() {
+                            isDownloading = false;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Ошибка скачивания')),
+                          );
+                        },
+                        cancelOnError: true,
+                      );
+                    } catch (e) {
+                      setState(() {
+                        isDownloading = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Ошибка сети')),
+                      );
+                    }
+                  },
+                  child: const Text('Скачать и установить'),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -183,7 +248,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (_selectedIndex == 0) {
       // Фильтруем товары по разделу и строке поиска
-      var filteredProducts = appData.products.where((p) {
+      var sourceList = _selectedCategory == 'Все'
+          ? _shuffledProducts
+          : appData.products;
+
+      var filteredProducts = sourceList.where((p) {
         final matchesCategory =
             _selectedCategory == 'Все' || p.category == _selectedCategory;
         final matchesSearch =
