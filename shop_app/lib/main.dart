@@ -178,15 +178,49 @@ class _HomeScreenState extends State<HomeScreen> {
                         onDone: () async {
                           final dir = await getTemporaryDirectory();
                           final file = File('${dir.path}/update.apk');
-                          await file.writeAsBytes(bytes);
-
-                          // Запускаем установку скачанного файла
-                          await OpenFilex.open(file.path);
+                          // Удаляем старый файл, если он остался, и принудительно сохраняем новый
+                          if (await file.exists()) {
+                            await file.delete();
+                          }
+                          await file.writeAsBytes(bytes, flush: true);
 
                           setState(() {
                             isDownloading = false;
                             progress = 0.0;
                           });
+
+                          // Защита: Если скачанный файл весит меньше 1 МБ, значит по ссылке скачалась веб-страница с ошибкой (битая ссылка)
+                          if (bytes.length < 1000000) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Ошибка файла. Открываем в браузере...',
+                                  ),
+                                ),
+                              );
+                              launchUrl(
+                                Uri.parse(url),
+                                mode: LaunchMode.externalApplication,
+                              );
+                            }
+                            return;
+                          }
+
+                          // Запускаем установку, явно указывая системе, что это APK файл
+                          final result = await OpenFilex.open(
+                            file.path,
+                            type: 'application/vnd.android.package-archive',
+                          );
+
+                          // Если Android всё равно заблокировал открытие файла, используем запасной вариант - браузер
+                          if (result.type != ResultType.done &&
+                              context.mounted) {
+                            launchUrl(
+                              Uri.parse(url),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          }
                         },
                         onError: (e) {
                           setState(() {
