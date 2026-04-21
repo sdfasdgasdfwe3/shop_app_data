@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   );
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 1; // Текущая версия этого приложения
+  final int _currentAppVersion = 4; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -127,8 +127,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             onPressed: () async {
               final uri = Uri.parse(url);
-              if (await canLaunchUrl(uri)) {
+              try {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Не удалось открыть браузер для скачивания'),
+                  ),
+                );
               }
             },
             child: const Text('Скачать обновление'),
@@ -153,9 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
-            if (index == 0) {
-              appData.products.shuffle();
-            }
           });
         },
         items: const [
