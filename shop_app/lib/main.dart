@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 7; // Текущая версия этого приложения
+  final int _currentAppVersion = 8; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
