@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'НПК ИНФИНИТИ',
+      title: 'INFINITY',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 8; // Текущая версия этого приложения
+  final int _currentAppVersion = 9; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -257,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'НПК ИНФИНИТИ',
+          'INFINITY',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -431,27 +431,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                   borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(20),
                                   ),
-                                  child: CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    height: 160,
-                                    width: double.infinity,
-                                    fit: BoxFit
-                                        .cover, // Растягиваем на всю ширину
-                                    placeholder: (context, url) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Center(
-                                            child: CircularProgressIndicator(),
+                                  child: Hero(
+                                    tag: 'product_${product.id}',
+                                    child: CachedNetworkImage(
+                                      imageUrl: imageUrl,
+                                      height: 160,
+                                      width: double.infinity,
+                                      fit: BoxFit
+                                          .cover, // Растягиваем на всю ширину
+                                      placeholder: (context, url) =>
+                                          const SizedBox(
+                                            height: 160,
+                                            child: Center(
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
                                           ),
-                                        ),
-                                    errorWidget: (context, url, error) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Icon(
-                                            Icons.broken_image,
-                                            size: 50,
+                                      errorWidget: (context, url, error) =>
+                                          const SizedBox(
+                                            height: 160,
+                                            child: Icon(
+                                              Icons.broken_image,
+                                              size: 50,
+                                            ),
                                           ),
-                                        ),
+                                    ),
                                   ),
                                 ),
                                 Expanded(
@@ -640,27 +644,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                     top: Radius.circular(20),
                                   ),
                                   child: imageUrl.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: imageUrl,
-                                          height: 160,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              const SizedBox(
-                                                height: 160,
-                                                child: Center(
-                                                  child:
-                                                      CircularProgressIndicator(),
+                                      ? Hero(
+                                          tag: 'article_${article.id}',
+                                          child: CachedNetworkImage(
+                                            imageUrl: imageUrl,
+                                            height: 160,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            placeholder: (context, url) =>
+                                                const SizedBox(
+                                                  height: 160,
+                                                  child: Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
                                                 ),
-                                              ),
-                                          errorWidget: (context, url, error) =>
-                                              const SizedBox(
-                                                height: 160,
-                                                child: Icon(
-                                                  Icons.broken_image,
-                                                  size: 50,
-                                                ),
-                                              ),
+                                            errorWidget:
+                                                (context, url, error) =>
+                                                    const SizedBox(
+                                                      height: 160,
+                                                      child: Icon(
+                                                        Icons.broken_image,
+                                                        size: 50,
+                                                      ),
+                                                    ),
+                                          ),
                                         )
                                       : const SizedBox(
                                           height: 160,
@@ -800,27 +808,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                     top: Radius.circular(20),
                                   ),
                                   child: imageUrl.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: imageUrl,
-                                          height: 160,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              const SizedBox(
-                                                height: 160,
-                                                child: Center(
-                                                  child:
-                                                      CircularProgressIndicator(),
+                                      ? Hero(
+                                          tag: 'review_${review.id}',
+                                          child: CachedNetworkImage(
+                                            imageUrl: imageUrl,
+                                            height: 160,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            placeholder: (context, url) =>
+                                                const SizedBox(
+                                                  height: 160,
+                                                  child: Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
                                                 ),
-                                              ),
-                                          errorWidget: (context, url, error) =>
-                                              const SizedBox(
-                                                height: 160,
-                                                child: Icon(
-                                                  Icons.broken_image,
-                                                  size: 50,
-                                                ),
-                                              ),
+                                            errorWidget:
+                                                (context, url, error) =>
+                                                    const SizedBox(
+                                                      height: 160,
+                                                      child: Icon(
+                                                        Icons.broken_image,
+                                                        size: 50,
+                                                      ),
+                                                    ),
+                                          ),
                                         )
                                       : const SizedBox(
                                           height: 160,
@@ -960,18 +972,21 @@ class ProductDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CachedNetworkImage(
-              imageUrl: imageUrl,
-              width: double.infinity,
-              height: 350,
-              fit: BoxFit.cover, // Растягиваем фото от края до края
-              placeholder: (context, url) => const SizedBox(
+            Hero(
+              tag: 'product_${product.id}',
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: double.infinity,
                 height: 350,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (context, url, error) => const SizedBox(
-                height: 350,
-                child: Icon(Icons.broken_image, size: 100),
+                fit: BoxFit.cover, // Растягиваем фото от края до края
+                placeholder: (context, url) => const SizedBox(
+                  height: 350,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  height: 350,
+                  child: Icon(Icons.broken_image, size: 100),
+                ),
               ),
             ),
             Container(
@@ -1120,18 +1135,21 @@ class ReviewDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (review.image.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: double.infinity,
-                height: 350,
-                fit: BoxFit.cover, // Растягиваем на весь экран
-                placeholder: (context, url) => const SizedBox(
+              Hero(
+                tag: 'review_${review.id}',
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  width: double.infinity,
                   height: 350,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const SizedBox(
-                  height: 350,
-                  child: Icon(Icons.broken_image, size: 100),
+                  fit: BoxFit.cover, // Растягиваем на весь экран
+                  placeholder: (context, url) => const SizedBox(
+                    height: 350,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => const SizedBox(
+                    height: 350,
+                    child: Icon(Icons.broken_image, size: 100),
+                  ),
                 ),
               ),
             Container(
@@ -1233,18 +1251,21 @@ class ArticleDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (article.image.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: double.infinity,
-                height: 350,
-                fit: BoxFit.cover, // Растягиваем на весь экран
-                placeholder: (context, url) => const SizedBox(
+              Hero(
+                tag: 'article_${article.id}',
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  width: double.infinity,
                   height: 350,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const SizedBox(
-                  height: 350,
-                  child: Icon(Icons.broken_image, size: 100),
+                  fit: BoxFit.cover, // Растягиваем на весь экран
+                  placeholder: (context, url) => const SizedBox(
+                    height: 350,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => const SizedBox(
+                    height: 350,
+                    child: Icon(Icons.broken_image, size: 100),
+                  ),
                 ),
               ),
             Container(
