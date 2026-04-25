@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 9; // Текущая версия этого приложения
+  final int _currentAppVersion = 10; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -238,9 +238,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() {
                         isDownloading = false;
                       });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Ошибка сети')),
-                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Ошибка сети')),
+                        );
+                      }
                     }
                   },
                   child: const Text('Скачать и установить'),
@@ -266,13 +268,10 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _selectedIndex,
         onTap: (index) {
           setState(() {
-            if (_selectedIndex != index) {
-              _searchQuery = ''; // Очищаем поиск при смене вкладки
-              _searchController.clear();
-            }
             _selectedIndex = index;
           });
         },
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_bag),
@@ -294,7 +293,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (_selectedIndex == 0) {
-      // Фильтруем товары по разделу и строке поиска
       var sourceList = _selectedCategory == 'Все'
           ? _shuffledProducts
           : appData.products;
@@ -308,13 +306,10 @@ class _HomeScreenState extends State<HomeScreen> {
         return matchesCategory && matchesSearch;
       }).toList();
 
-      // Вкладка с товарами
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Панель поиска
           _buildSearchBar('Поиск товаров...'),
-          // 2. Горизонтальная лента Разделов
           if (appData.categories.isNotEmpty)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -351,9 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         onSelected: (selected) {
                           if (selected) {
-                            setState(() {
-                              _selectedCategory = category;
-                            });
+                            setState(() => _selectedCategory = category);
                           }
                         },
                       ),
@@ -362,7 +355,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-          // 3. Список товаров
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadData,
@@ -385,19 +377,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   : GridView.builder(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio:
-                            0.48, // Увеличили высоту карточки для крупного текста
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.48,
+                          ),
                       itemCount: filteredProducts.length,
                       itemBuilder: (context, index) {
                         final product = filteredProducts[index];
                         final imageUrl =
                             "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}";
-
                         return GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -415,10 +406,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               border: Border.all(
                                 color: Colors.grey.shade300,
                                 width: 1.5,
-                              ), // Усилили обводку
+                              ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -431,31 +422,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                   borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(20),
                                   ),
-                                  child: Hero(
-                                    tag: 'product_${product.id}',
-                                    child: CachedNetworkImage(
-                                      imageUrl: imageUrl,
-                                      height: 160,
-                                      width: double.infinity,
-                                      fit: BoxFit
-                                          .cover, // Растягиваем на всю ширину
-                                      placeholder: (context, url) =>
-                                          const SizedBox(
-                                            height: 160,
-                                            child: Center(
-                                              child:
-                                                  CircularProgressIndicator(),
-                                            ),
+                                  child: CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    height: 160,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) =>
+                                        const SizedBox(
+                                          height: 160,
+                                          child: Center(
+                                            child: CircularProgressIndicator(),
                                           ),
-                                      errorWidget: (context, url, error) =>
-                                          const SizedBox(
-                                            height: 160,
-                                            child: Icon(
-                                              Icons.broken_image,
-                                              size: 50,
-                                            ),
+                                        ),
+                                    errorWidget: (context, url, error) =>
+                                        const SizedBox(
+                                          height: 160,
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 50,
                                           ),
-                                    ),
+                                        ),
                                   ),
                                 ),
                                 Expanded(
@@ -481,8 +467,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const SizedBox(height: 10),
                                         FittedBox(
                                           fit: BoxFit.scaleDown,
-                                          alignment: Alignment
-                                              .center, // Выровняли ценники по центру!
+                                          alignment: Alignment.center,
                                           child: Row(
                                             children: [
                                               Container(
@@ -492,8 +477,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       vertical: 4,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue
-                                                      .withOpacity(0.1),
+                                                  color: Colors.blue.withValues(
+                                                    alpha: 0.1,
+                                                  ),
                                                   borderRadius:
                                                       BorderRadius.circular(6),
                                                 ),
@@ -515,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     ),
                                                 decoration: BoxDecoration(
                                                   color: Colors.orange
-                                                      .withOpacity(0.1),
+                                                      .withValues(alpha: 0.1),
                                                   borderRadius:
                                                       BorderRadius.circular(6),
                                                 ),
@@ -534,14 +520,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         const SizedBox(height: 8),
                                         Expanded(
-                                          // Занимает всё оставшееся место
                                           child: Text(
                                             product.description,
                                             textAlign: TextAlign.center,
-                                            maxLines:
-                                                4, // Оптимальное количество строк для оставшегося пространства
-                                            overflow: TextOverflow
-                                                .ellipsis, // Аккуратно обрезает многоточием
+                                            maxLines: 4,
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: Colors.grey.shade600,
@@ -564,7 +547,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       );
     } else if (_selectedIndex == 1) {
-      // Вкладка со статьями
       var filteredArticles = appData.articles.where((a) {
         return a.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             a.content.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -600,8 +582,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisCount: 2,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
-                            childAspectRatio:
-                                0.65, // Пропорции для статей (без цены)
+                            childAspectRatio: 0.65,
                           ),
                       itemCount: filteredArticles.length,
                       itemBuilder: (context, index) {
@@ -609,7 +590,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         final imageUrl = article.image.isNotEmpty
                             ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
                             : "";
-
                         return GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -630,7 +610,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -644,31 +624,27 @@ class _HomeScreenState extends State<HomeScreen> {
                                     top: Radius.circular(20),
                                   ),
                                   child: imageUrl.isNotEmpty
-                                      ? Hero(
-                                          tag: 'article_${article.id}',
-                                          child: CachedNetworkImage(
-                                            imageUrl: imageUrl,
-                                            height: 160,
-                                            width: double.infinity,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) =>
-                                                const SizedBox(
-                                                  height: 160,
-                                                  child: Center(
-                                                    child:
-                                                        CircularProgressIndicator(),
-                                                  ),
+                                      ? CachedNetworkImage(
+                                          imageUrl: imageUrl,
+                                          height: 160,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              const SizedBox(
+                                                height: 160,
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
                                                 ),
-                                            errorWidget:
-                                                (context, url, error) =>
-                                                    const SizedBox(
-                                                      height: 160,
-                                                      child: Icon(
-                                                        Icons.broken_image,
-                                                        size: 50,
-                                                      ),
-                                                    ),
-                                          ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              const SizedBox(
+                                                height: 160,
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                ),
+                                              ),
                                         )
                                       : const SizedBox(
                                           height: 160,
@@ -729,7 +705,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       );
     } else {
-      // Вкладка с отзывами
       var filteredReviews = appData.reviews.where((r) {
         return r.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             r.content.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -765,7 +740,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisCount: 2,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
-                            childAspectRatio: 0.65, // Пропорции как у статей
+                            childAspectRatio: 0.65,
                           ),
                       itemCount: filteredReviews.length,
                       itemBuilder: (context, index) {
@@ -773,7 +748,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         final imageUrl = review.image.isNotEmpty
                             ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
                             : "";
-
                         return GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -794,7 +768,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -808,31 +782,27 @@ class _HomeScreenState extends State<HomeScreen> {
                                     top: Radius.circular(20),
                                   ),
                                   child: imageUrl.isNotEmpty
-                                      ? Hero(
-                                          tag: 'review_${review.id}',
-                                          child: CachedNetworkImage(
-                                            imageUrl: imageUrl,
-                                            height: 160,
-                                            width: double.infinity,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) =>
-                                                const SizedBox(
-                                                  height: 160,
-                                                  child: Center(
-                                                    child:
-                                                        CircularProgressIndicator(),
-                                                  ),
+                                      ? CachedNetworkImage(
+                                          imageUrl: imageUrl,
+                                          height: 160,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              const SizedBox(
+                                                height: 160,
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
                                                 ),
-                                            errorWidget:
-                                                (context, url, error) =>
-                                                    const SizedBox(
-                                                      height: 160,
-                                                      child: Icon(
-                                                        Icons.broken_image,
-                                                        size: 50,
-                                                      ),
-                                                    ),
-                                          ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              const SizedBox(
+                                                height: 160,
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                ),
+                                              ),
                                         )
                                       : const SizedBox(
                                           height: 160,
@@ -853,8 +823,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       children: [
                                         Center(
                                           child: Text(
-                                            review
-                                                .title, // В качестве заголовка, например, можно выводить Имя автора
+                                            review.title,
                                             textAlign: TextAlign.center,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
@@ -868,7 +837,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const SizedBox(height: 8),
                                         Expanded(
                                           child: Text(
-                                            review.content, // Сам текст отзыва
+                                            review.content,
                                             textAlign: TextAlign.center,
                                             maxLines: 4,
                                             overflow: TextOverflow.ellipsis,
@@ -972,21 +941,18 @@ class ProductDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Hero(
-              tag: 'product_${product.id}',
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: double.infinity,
+            CachedNetworkImage(
+              imageUrl: imageUrl,
+              width: double.infinity,
+              height: 350,
+              fit: BoxFit.cover, // Растягиваем фото от края до края
+              placeholder: (context, url) => const SizedBox(
                 height: 350,
-                fit: BoxFit.cover, // Растягиваем фото от края до края
-                placeholder: (context, url) => const SizedBox(
-                  height: 350,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const SizedBox(
-                  height: 350,
-                  child: Icon(Icons.broken_image, size: 100),
-                ),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (context, url, error) => const SizedBox(
+                height: 350,
+                child: Icon(Icons.broken_image, size: 100),
               ),
             ),
             Container(
@@ -1025,7 +991,7 @@ class ProductDetailScreen extends StatelessWidget {
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -1043,7 +1009,7 @@ class ProductDetailScreen extends StatelessWidget {
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
+                            color: Colors.orange.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -1135,21 +1101,18 @@ class ReviewDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (review.image.isNotEmpty)
-              Hero(
-                tag: 'review_${review.id}',
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  width: double.infinity,
+              CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: double.infinity,
+                height: 350,
+                fit: BoxFit.cover, // Растягиваем на весь экран
+                placeholder: (context, url) => const SizedBox(
                   height: 350,
-                  fit: BoxFit.cover, // Растягиваем на весь экран
-                  placeholder: (context, url) => const SizedBox(
-                    height: 350,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => const SizedBox(
-                    height: 350,
-                    child: Icon(Icons.broken_image, size: 100),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  height: 350,
+                  child: Icon(Icons.broken_image, size: 100),
                 ),
               ),
             Container(
@@ -1219,7 +1182,8 @@ class ArticleDetailScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () async {
-              final shareText = '📄 ${article.title}\n\n${article.content}';
+              final shareText =
+                  '📄 ${article.title}\n\n${article.content}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases)';
 
               if (imageUrl.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1251,21 +1215,18 @@ class ArticleDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (article.image.isNotEmpty)
-              Hero(
-                tag: 'article_${article.id}',
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  width: double.infinity,
+              CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: double.infinity,
+                height: 350,
+                fit: BoxFit.cover, // Растягиваем на весь экран
+                placeholder: (context, url) => const SizedBox(
                   height: 350,
-                  fit: BoxFit.cover, // Растягиваем на весь экран
-                  placeholder: (context, url) => const SizedBox(
-                    height: 350,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => const SizedBox(
-                    height: 350,
-                    child: Icon(Icons.broken_image, size: 100),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => const SizedBox(
+                  height: 350,
+                  child: Icon(Icons.broken_image, size: 100),
                 ),
               ),
             Container(
