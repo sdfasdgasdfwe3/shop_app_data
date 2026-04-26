@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 10; // Текущая версия этого приложения
+  final int _currentAppVersion = 11; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -394,8 +394,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    ProductDetailScreen(product: product),
+                                builder: (context) => ProductDetailScreen(
+                                  product: product,
+                                  allProducts: appData.products,
+                                ),
                               ),
                             );
                           },
@@ -898,10 +900,19 @@ class _HomeScreenState extends State<HomeScreen> {
 // --- Экран детализации товара ---
 class ProductDetailScreen extends StatelessWidget {
   final Product product;
-  const ProductDetailScreen({super.key, required this.product});
+  final List<Product> allProducts;
+  const ProductDetailScreen({
+    super.key,
+    required this.product,
+    required this.allProducts,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final similarProducts = allProducts
+        .where((p) => p.category == product.category && p.id != product.id)
+        .toList();
+
     final imageUrl =
         "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}";
     return Scaffold(
@@ -915,7 +926,7 @@ class ProductDetailScreen extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               final shareText =
-                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}';
+                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/latest)';
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Загрузка фото для отправки...'),
@@ -1038,6 +1049,126 @@ class ProductDetailScreen extends StatelessWidget {
                       color: Colors.black87,
                     ),
                   ),
+                  if (similarProducts.isNotEmpty) ...[
+                    const SizedBox(height: 32),
+                    const Text(
+                      'Похожие товары',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 200,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: similarProducts.length,
+                        itemBuilder: (context, index) {
+                          final similar = similarProducts[index];
+                          final simImageUrl =
+                              "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${similar.image}";
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProductDetailScreen(
+                                    product: similar,
+                                    allProducts: allProducts,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 140,
+                              margin: const EdgeInsets.only(
+                                right: 16,
+                                bottom: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.grey.shade300,
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(16),
+                                    ),
+                                    child: CachedNetworkImage(
+                                      imageUrl: simImageUrl,
+                                      height: 110,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) =>
+                                          const SizedBox(
+                                            height: 110,
+                                            child: Center(
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
+                                          ),
+                                      errorWidget: (context, url, error) =>
+                                          const SizedBox(
+                                            height: 110,
+                                            child: Icon(Icons.broken_image),
+                                          ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            similar.name,
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${similar.price} ₽',
+                                            style: const TextStyle(
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1069,7 +1200,8 @@ class ReviewDetailScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () async {
-              final shareText = '💬 ${review.title}\n\n${review.content}';
+              final shareText =
+                  '💬 ${review.title}\n\n${review.content}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/latest)';
 
               if (imageUrl.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1183,7 +1315,7 @@ class ArticleDetailScreen extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               final shareText =
-                  '📄 ${article.title}\n\n${article.content}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases)';
+                  '📄 ${article.title}\n\n${article.content}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/latest)';
 
               if (imageUrl.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
