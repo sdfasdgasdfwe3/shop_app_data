@@ -17,6 +17,7 @@ git commit -m "Auto-update database and code: %date% %time%"
 if %errorlevel% neq 0 (
     echo.
     echo No new changes found to commit. Checking for pending commits to push...
+<<<<<<< HEAD
 )
 
 rem Pull latest changes from GitHub to avoid conflicts
@@ -25,6 +26,8 @@ if %errorlevel% neq 0 (
     echo.
     echo Error: Failed to pull data from GitHub. Please resolve conflicts manually.
     goto end
+=======
+>>>>>>> 667f478 (Auto-update database and code: 01.05.2026  4:43:58,27)
 )
 
 rem Push files to GitHub
