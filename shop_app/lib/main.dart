@@ -10,6 +10,8 @@ import 'package:open_filex/open_filex.dart';
 import 'models.dart';
 import 'data_manager.dart';
 
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+
 void main() {
   runApp(const MyApp());
 }
@@ -19,21 +21,47 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'INFINITY',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          elevation: 0,
-          centerTitle: true,
-        ),
-      ),
-      home: const HomeScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, currentMode, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'INFINITY',
+          themeMode: currentMode,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            useMaterial3: true,
+            scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black87,
+              elevation: 1,
+              shadowColor: Colors.black12,
+              surfaceTintColor: Colors.transparent,
+              centerTitle: true,
+            ),
+            cardColor: Colors.white,
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.blue,
+              brightness: Brightness.dark,
+            ),
+            useMaterial3: true,
+            scaffoldBackgroundColor: const Color(0xFF121212),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: const Color(0xFF1E1E1E),
+              foregroundColor: Colors.white,
+              elevation: 1,
+              shadowColor: Colors.black54,
+              surfaceTintColor: Colors.transparent,
+              centerTitle: true,
+            ),
+            cardColor: const Color(0xFF1E1E1E),
+          ),
+          home: const HomeScreen(),
+        );
+      },
     );
   }
 }
@@ -56,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 11; // Текущая версия этого приложения
+  final int _currentAppVersion = 12; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -258,31 +286,122 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'INFINITY',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.all_inclusive,
+                color: Colors.blue,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'INFINITY',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5),
+            ),
+          ],
         ),
+        actions: [
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: themeNotifier,
+            builder: (context, currentMode, child) {
+              return IconButton(
+                icon: Icon(
+                  currentMode == ThemeMode.light
+                      ? Icons.dark_mode
+                      : Icons.light_mode,
+                ),
+                onPressed: () {
+                  themeNotifier.value = currentMode == ThemeMode.light
+                      ? ThemeMode.dark
+                      : ThemeMode.light;
+                },
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: _buildBody(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag),
-            label: 'Товары',
+      extendBody: true,
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withValues(alpha: 0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                backgroundColor: Theme.of(context).cardColor,
+                selectedItemColor: Colors.blue.shade700,
+                unselectedItemColor: Colors.grey.shade500,
+                showSelectedLabels: true,
+                showUnselectedLabels: false,
+                elevation: 0,
+                type: BottomNavigationBarType.fixed,
+                selectedFontSize: 12,
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.shopping_bag_outlined),
+                    ),
+                    activeIcon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.shopping_bag),
+                    ),
+                    label: 'Товары',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.article_outlined),
+                    ),
+                    activeIcon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.article),
+                    ),
+                    label: 'Статьи',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.rate_review_outlined),
+                    ),
+                    activeIcon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.rate_review),
+                    ),
+                    label: 'Отзывы',
+                  ),
+                ],
+              ),
+            ),
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Статьи'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review),
-            label: 'Отзывы',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -326,7 +445,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     labelStyle: TextStyle(
                       color: _selectedCategory == 'Все'
                           ? Colors.white
-                          : Colors.black87,
+                          : Theme.of(context).textTheme.bodyMedium?.color,
                     ),
                     onSelected: (selected) {
                       if (selected) setState(() => _selectedCategory = 'Все');
@@ -342,7 +461,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         labelStyle: TextStyle(
                           color: _selectedCategory == category
                               ? Colors.white
-                              : Colors.black87,
+                              : Theme.of(context).textTheme.bodyMedium?.color,
                         ),
                         onSelected: (selected) {
                           if (selected) {
@@ -376,7 +495,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     )
                   : GridView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 16,
+                        bottom: 120,
+                      ),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
@@ -389,7 +513,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final product = filteredProducts[index];
                         final imageUrl =
                             "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}";
-                        return GestureDetector(
+                        return ItemCard(
                           onTap: () {
                             Navigator.push(
                               context,
@@ -401,146 +525,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             );
                           },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(20),
-                                  ),
-                                  child: CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    height: 160,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Center(
-                                            child: CircularProgressIndicator(),
-                                          ),
-                                        ),
-                                    errorWidget: (context, url, error) =>
-                                        const SizedBox(
-                                          height: 160,
-                                          child: Icon(
-                                            Icons.broken_image,
-                                            size: 50,
-                                          ),
-                                        ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(10.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Center(
-                                          child: Text(
-                                            product.name,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              height: 1.2,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          alignment: Alignment.center,
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue.withValues(
-                                                    alpha: 0.1,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                ),
-                                                child: Text(
-                                                  '${product.price} ₽',
-                                                  style: const TextStyle(
-                                                    color: Colors.blue,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.orange
-                                                      .withValues(alpha: 0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                ),
-                                                child: Text(
-                                                  '${product.points} баллов',
-                                                  style: TextStyle(
-                                                    color:
-                                                        Colors.orange.shade800,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Expanded(
-                                          child: Text(
-                                            product.description,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 4,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                              height: 1.3,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          imageUrl: imageUrl,
+                          placeholderIcon: Icons.shopping_bag,
+                          title: product.name,
+                          description: product.description,
+                          priceText: '${product.price} ₽',
+                          pointsText: '${product.points} баллов',
                         );
                       },
                     ),
@@ -578,7 +568,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     )
                   : GridView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 16,
+                        bottom: 120,
+                      ),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
@@ -592,113 +587,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         final imageUrl = article.image.isNotEmpty
                             ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
                             : "";
-                        return GestureDetector(
+                        return ItemCard(
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    ArticleDetailScreen(article: article),
+                                builder: (context) => ContentDetailScreen(
+                                  item: article,
+                                  pageTitle: 'Статья',
+                                  shareEmoji: '📄',
+                                ),
                               ),
                             );
                           },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(20),
-                                  ),
-                                  child: imageUrl.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: imageUrl,
-                                          height: 160,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              const SizedBox(
-                                                height: 160,
-                                                child: Center(
-                                                  child:
-                                                      CircularProgressIndicator(),
-                                                ),
-                                              ),
-                                          errorWidget: (context, url, error) =>
-                                              const SizedBox(
-                                                height: 160,
-                                                child: Icon(
-                                                  Icons.broken_image,
-                                                  size: 50,
-                                                ),
-                                              ),
-                                        )
-                                      : const SizedBox(
-                                          height: 160,
-                                          width: double.infinity,
-                                          child: Icon(
-                                            Icons.article,
-                                            size: 50,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(10.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Center(
-                                          child: Text(
-                                            article.title,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              height: 1.2,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Expanded(
-                                          child: Text(
-                                            article.content,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 4,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                              height: 1.3,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          imageUrl: imageUrl,
+                          placeholderIcon: Icons.article,
+                          title: article.title,
+                          description: article.content,
                         );
                       },
                     ),
@@ -736,7 +641,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     )
                   : GridView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 16,
+                        bottom: 120,
+                      ),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
@@ -750,113 +660,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         final imageUrl = review.image.isNotEmpty
                             ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
                             : "";
-                        return GestureDetector(
+                        return ItemCard(
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    ReviewDetailScreen(review: review),
+                                builder: (context) => ContentDetailScreen(
+                                  item: review,
+                                  pageTitle: 'Отзыв',
+                                  shareEmoji: '💬',
+                                ),
                               ),
                             );
                           },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(20),
-                                  ),
-                                  child: imageUrl.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: imageUrl,
-                                          height: 160,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              const SizedBox(
-                                                height: 160,
-                                                child: Center(
-                                                  child:
-                                                      CircularProgressIndicator(),
-                                                ),
-                                              ),
-                                          errorWidget: (context, url, error) =>
-                                              const SizedBox(
-                                                height: 160,
-                                                child: Icon(
-                                                  Icons.broken_image,
-                                                  size: 50,
-                                                ),
-                                              ),
-                                        )
-                                      : const SizedBox(
-                                          height: 160,
-                                          width: double.infinity,
-                                          child: Icon(
-                                            Icons.rate_review,
-                                            size: 50,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(10.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Center(
-                                          child: Text(
-                                            review.title,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              height: 1.2,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Expanded(
-                                          child: Text(
-                                            review.content,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 4,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                              height: 1.3,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          imageUrl: imageUrl,
+                          placeholderIcon: Icons.rate_review,
+                          title: review.title,
+                          description: review.content,
                         );
                       },
                     ),
@@ -876,7 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
           hintText: hintText,
           prefixIcon: const Icon(Icons.search, color: Colors.blue),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Theme.of(context).cardColor,
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -892,6 +712,55 @@ class _HomeScreenState extends State<HomeScreen> {
             _searchQuery = value;
           });
         },
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    int index,
+    IconData outlineIcon,
+    IconData solidIcon,
+    String label,
+  ) {
+    final isSelected = _selectedIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedIndex = index),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutQuint,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.blue.withValues(alpha: 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? solidIcon : outlineIcon,
+              color: isSelected ? Colors.blue : Colors.grey.shade500,
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutQuint,
+              child: Container(
+                width: isSelected ? null : 0,
+                padding: EdgeInsets.only(left: isSelected ? 8.0 : 0),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -926,7 +795,7 @@ class ProductDetailScreen extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               final shareText =
-                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/latest)';
+                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/download/12/app-release.apk)';
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Загрузка фото для отправки...'),
@@ -1043,10 +912,10 @@ class ProductDetailScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     product.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       height: 1.6,
-                      color: Colors.black87,
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
                     ),
                   ),
                   if (similarProducts.isNotEmpty) ...[
@@ -1060,7 +929,7 @@ class ProductDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
-                      height: 200,
+                      height: 250,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: similarProducts.length,
@@ -1081,13 +950,13 @@ class ProductDetailScreen extends StatelessWidget {
                               );
                             },
                             child: Container(
-                              width: 140,
+                              width: 160,
                               margin: const EdgeInsets.only(
                                 right: 16,
                                 bottom: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Theme.of(context).cardColor,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: Colors.grey.shade300,
@@ -1110,12 +979,12 @@ class ProductDetailScreen extends StatelessWidget {
                                     ),
                                     child: CachedNetworkImage(
                                       imageUrl: simImageUrl,
-                                      height: 110,
+                                      height: 140,
                                       width: double.infinity,
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) =>
                                           const SizedBox(
-                                            height: 110,
+                                            height: 140,
                                             child: Center(
                                               child:
                                                   CircularProgressIndicator(),
@@ -1123,7 +992,7 @@ class ProductDetailScreen extends StatelessWidget {
                                           ),
                                       errorWidget: (context, url, error) =>
                                           const SizedBox(
-                                            height: 110,
+                                            height: 140,
                                             child: Icon(Icons.broken_image),
                                           ),
                                     ),
@@ -1179,29 +1048,37 @@ class ProductDetailScreen extends StatelessWidget {
   }
 }
 
-// --- Экран детализации отзыва ---
-class ReviewDetailScreen extends StatelessWidget {
-  final Article review;
-  const ReviewDetailScreen({super.key, required this.review});
+// --- Универсальный экран детализации (для статей и отзывов) ---
+class ContentDetailScreen extends StatelessWidget {
+  final Article item;
+  final String pageTitle;
+  final String shareEmoji;
+
+  const ContentDetailScreen({
+    super.key,
+    required this.item,
+    required this.pageTitle,
+    required this.shareEmoji,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = review.image.isNotEmpty
-        ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
+    final imageUrl = item.image.isNotEmpty
+        ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${item.image}"
         : "";
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Отзыв',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          pageTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () async {
               final shareText =
-                  '💬 ${review.title}\n\n${review.content}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/latest)';
+                  '$shareEmoji ${item.title}\n\n${item.content}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/download/12/app-release.apk)';
 
               if (imageUrl.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1214,7 +1091,7 @@ class ReviewDetailScreen extends StatelessWidget {
                   final response = await http.get(Uri.parse(imageUrl));
                   final tempDir = await getTemporaryDirectory();
                   final file = await File(
-                    '${tempDir.path}/share_${review.image}',
+                    '${tempDir.path}/share_${item.image}',
                   ).create();
                   await file.writeAsBytes(response.bodyBytes);
                   await Share.shareXFiles([XFile(file.path)], text: shareText);
@@ -1232,7 +1109,7 @@ class ReviewDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (review.image.isNotEmpty)
+            if (item.image.isNotEmpty)
               CachedNetworkImage(
                 imageUrl: imageUrl,
                 width: double.infinity,
@@ -1248,14 +1125,14 @@ class ReviewDetailScreen extends StatelessWidget {
                 ),
               ),
             Container(
-              transform: review.image.isNotEmpty
+              transform: item.image.isNotEmpty
                   ? Matrix4.translationValues(0, -20, 0)
                   : null,
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
                 ).scaffoldBackgroundColor, // Цвет фона как у товаров
-                borderRadius: review.image.isNotEmpty
+                borderRadius: item.image.isNotEmpty
                     ? const BorderRadius.vertical(top: Radius.circular(24))
                     : null,
               ),
@@ -1265,7 +1142,7 @@ class ReviewDetailScreen extends StatelessWidget {
                 children: [
                   Center(
                     child: Text(
-                      review.title,
+                      item.title,
                       textAlign: TextAlign.center, // Заголовок по центру
                       style: const TextStyle(
                         fontSize: 28,
@@ -1276,11 +1153,11 @@ class ReviewDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    review.content,
-                    style: const TextStyle(
+                    item.content,
+                    style: TextStyle(
                       fontSize: 16,
                       height: 1.6,
-                      color: Colors.black87,
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
                     ),
                   ),
                 ],
@@ -1293,111 +1170,164 @@ class ReviewDetailScreen extends StatelessWidget {
   }
 }
 
-// --- Экран детализации статьи ---
-class ArticleDetailScreen extends StatelessWidget {
-  final Article article;
-  const ArticleDetailScreen({super.key, required this.article});
+// --- Универсальный виджет карточки (Товар, Статья, Отзыв) ---
+class ItemCard extends StatelessWidget {
+  final VoidCallback onTap;
+  final String imageUrl;
+  final IconData placeholderIcon;
+  final String title;
+  final String description;
+  final String? priceText;
+  final String? pointsText;
+
+  const ItemCard({
+    super.key,
+    required this.onTap,
+    required this.imageUrl,
+    required this.placeholderIcon,
+    required this.title,
+    required this.description,
+    this.priceText,
+    this.pointsText,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = article.image.isNotEmpty
-        ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
-        : "";
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Статья',
-          style: TextStyle(fontWeight: FontWeight.bold),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade300, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () async {
-              final shareText =
-                  '📄 ${article.title}\n\n${article.content}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/latest)';
-
-              if (imageUrl.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Загрузка фото для отправки...'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-                try {
-                  final response = await http.get(Uri.parse(imageUrl));
-                  final tempDir = await getTemporaryDirectory();
-                  final file = await File(
-                    '${tempDir.path}/share_${article.image}',
-                  ).create();
-                  await file.writeAsBytes(response.bodyBytes);
-                  await Share.shareXFiles([XFile(file.path)], text: shareText);
-                } catch (e) {
-                  Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
-                }
-              } else {
-                Share.share(shareText);
-              }
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (article.image.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: double.infinity,
-                height: 350,
-                fit: BoxFit.cover, // Растягиваем на весь экран
-                placeholder: (context, url) => const SizedBox(
-                  height: 350,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const SizedBox(
-                  height: 350,
-                  child: Icon(Icons.broken_image, size: 100),
-                ),
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
               ),
-            Container(
-              transform: article.image.isNotEmpty
-                  ? Matrix4.translationValues(0, -20, 0)
-                  : null,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).scaffoldBackgroundColor, // Цвет фона как у товаров
-                borderRadius: article.image.isNotEmpty
-                    ? const BorderRadius.vertical(top: Radius.circular(24))
-                    : null,
-              ),
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Text(
-                      article.title,
-                      textAlign: TextAlign.center, // Заголовок по центру
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
+              child: imageUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => const SizedBox(
+                        height: 160,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => const SizedBox(
+                        height: 160,
+                        child: Icon(Icons.broken_image, size: 50),
+                      ),
+                    )
+                  : SizedBox(
+                      height: 160,
+                      width: double.infinity,
+                      child: Icon(
+                        placeholderIcon,
+                        size: 50,
+                        color: Colors.grey,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    article.content,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: Colors.black87,
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Center(
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    if (priceText != null || pointsText != null) ...[
+                      const SizedBox(height: 10),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: Row(
+                          children: [
+                            if (priceText != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  priceText!,
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            if (priceText != null && pointsText != null)
+                              const SizedBox(width: 6),
+                            if (pointsText != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  pointsText!,
+                                  style: TextStyle(
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ] else ...[
+                      const SizedBox(height: 8),
+                    ],
+                    Expanded(
+                      child: Text(
+                        description,
+                        textAlign: TextAlign.center,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
