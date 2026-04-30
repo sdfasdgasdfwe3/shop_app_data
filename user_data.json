@@ -1,0 +1,35 @@
+{
+  "articles": [
+    {
+      "id": 19,
+      "title": "выфа",
+      "content": "выаы",
+      "image": ""
+    },
+    {
+      "id": 18,
+      "title": "ыв",
+      "content": "аываф",
+      "image": ""
+    },
+    {
+      "id": 17,
+      "title": "фыва",
+      "content": "фыв",
+      "image": ""
+    },
+    {
+      "id": 16,
+      "title": "выфа",
+      "content": "фываы",
+      "image": ""
+    },
+    {
+      "id": 15,
+      "title": "вфыв",
+      "content": "фывфыв",
+      "image": ""
+    }
+  ],
+  "reviews": []
+}
