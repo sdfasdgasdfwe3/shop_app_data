@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'models.dart';
 import 'data_manager.dart';
@@ -50,7 +51,7 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
             scaffoldBackgroundColor: const Color(0xFF121212),
             appBarTheme: const AppBarTheme(
-              backgroundColor: const Color(0xFF1E1E1E),
+              backgroundColor: Color(0xFF1E1E1E),
               foregroundColor: Colors.white,
               elevation: 1,
               shadowColor: Colors.black54,
@@ -81,14 +82,30 @@ class _HomeScreenState extends State<HomeScreen> {
     categories: [],
     reviews: [],
   );
+  UserData userData = UserData(articles: [], reviews: []);
   List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 12; // Текущая версия этого приложения
+  final int _currentAppVersion = 13; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
   final TextEditingController _searchController = TextEditingController();
+
+  // ВАЖНО: Укажите здесь ваш GitHub Personal Access Token (с правами на редактирование кода)
+  final String _githubToken =
+      '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';
+
+  // Переменные для Профиля и Админ-панели
+  bool _isLoggedIn = false;
+  String _currentUser = '';
+  final TextEditingController _loginController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  String _adminAddType = 'Статья';
+  final TextEditingController _adminTitleController = TextEditingController();
+  final TextEditingController _adminContentController = TextEditingController();
+  final TextEditingController _adminImageController = TextEditingController();
+  File? _selectedImageFile;
 
   @override
   void initState() {
@@ -99,13 +116,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _loginController.dispose();
+    _passwordController.dispose();
+    _adminTitleController.dispose();
+    _adminContentController.dispose();
+    _adminImageController.dispose();
     super.dispose();
   }
 
   Future<void> _loadData() async {
     final localData = await dataManager.getLocalData();
+    final localUserData = await dataManager.getLocalUserData();
     setState(() {
       appData = localData;
+      userData = localUserData;
       _shuffledProducts = List.from(localData.products)
         ..shuffle(); // Перемешиваем только копию
       isLoading = localData.products.isEmpty && localData.articles.isEmpty;
@@ -125,9 +149,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (isUpdated) {
       final newData = await dataManager.getLocalData();
+      final newUserData = await dataManager.getLocalUserData();
       if (!mounted) return;
       setState(() {
         appData = newData;
+        userData = newUserData;
         _shuffledProducts = List.from(newData.products)
           ..shuffle(); // Обновляем копию
         isLoading = false;
@@ -397,6 +423,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     label: 'Отзывы',
                   ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.person_outline),
+                    ),
+                    activeIcon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.person),
+                    ),
+                    label: 'Профиль',
+                  ),
                 ],
               ),
             ),
@@ -539,7 +576,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       );
     } else if (_selectedIndex == 1) {
-      var filteredArticles = appData.articles.where((a) {
+      var allArticles = [...userData.articles, ...appData.articles];
+      var filteredArticles = allArticles.where((a) {
         return a.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             a.content.toLowerCase().contains(_searchQuery.toLowerCase());
       }).toList();
@@ -584,6 +622,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemCount: filteredArticles.length,
                       itemBuilder: (context, index) {
                         final article = filteredArticles[index];
+                        final isUserAdded = userData.articles.any(
+                          (e) => e.id == article.id,
+                        );
                         final imageUrl = article.image.isNotEmpty
                             ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
                             : "";
@@ -596,6 +637,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   item: article,
                                   pageTitle: 'Статья',
                                   shareEmoji: '📄',
+                                  canDelete: _isLoggedIn && isUserAdded,
+                                  onDelete: () => _deleteContent(article, true),
                                 ),
                               ),
                             );
@@ -611,8 +654,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       );
-    } else {
-      var filteredReviews = appData.reviews.where((r) {
+    } else if (_selectedIndex == 2) {
+      var allReviews = [...userData.reviews, ...appData.reviews];
+      var filteredReviews = allReviews.where((r) {
         return r.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             r.content.toLowerCase().contains(_searchQuery.toLowerCase());
       }).toList();
@@ -657,6 +701,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemCount: filteredReviews.length,
                       itemBuilder: (context, index) {
                         final review = filteredReviews[index];
+                        final isUserAdded = userData.reviews.any(
+                          (e) => e.id == review.id,
+                        );
                         final imageUrl = review.image.isNotEmpty
                             ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
                             : "";
@@ -669,6 +716,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   item: review,
                                   pageTitle: 'Отзыв',
                                   shareEmoji: '💬',
+                                  canDelete: _isLoggedIn && isUserAdded,
+                                  onDelete: () => _deleteContent(review, false),
                                 ),
                               ),
                             );
@@ -683,6 +732,354 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      );
+    } else {
+      return _buildProfileScreen();
+    }
+  }
+
+  Widget _buildProfileScreen() {
+    if (!_isLoggedIn) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Авторизация',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _loginController,
+                    decoration: const InputDecoration(
+                      labelText: 'Логин',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Пароль',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    onPressed: () {
+                      final login = _loginController.text.trim();
+                      final pass = _passwordController.text.trim();
+                      if ((login == 'Иман' && pass == '01012026') ||
+                          (login == 'Альфред' && pass == '01012026')) {
+                        setState(() {
+                          _isLoggedIn = true;
+                          _currentUser = login;
+                          _loginController.clear();
+                          _passwordController.clear();
+                        });
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Неверный логин или пароль'),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Войти'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Привет, $_currentUser!',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout, color: Colors.red),
+                  onPressed: () => setState(() {
+                    _isLoggedIn = false;
+                    _currentUser = '';
+                  }),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Добавление контента',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _adminAddType,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Тип контента',
+              ),
+              items: ['Статья', 'Отзыв'].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _adminAddType = newValue!;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _adminTitleController,
+              decoration: const InputDecoration(
+                labelText: 'Заголовок',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _adminContentController,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                labelText: 'Текст',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _adminImageController,
+              decoration: const InputDecoration(
+                labelText: 'Имя файла картинки (необязательно)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final picker = ImagePicker();
+                final pickedFile = await picker.pickImage(
+                  source: ImageSource.gallery,
+                );
+                if (pickedFile != null) {
+                  setState(() {
+                    _selectedImageFile = File(pickedFile.path);
+                    _adminImageController.clear();
+                  });
+                }
+              },
+              icon: Icon(
+                _selectedImageFile != null ? Icons.check : Icons.photo_library,
+              ),
+              label: Text(
+                _selectedImageFile != null
+                    ? 'Картинка выбрана'
+                    : 'Выбрать из галереи',
+              ),
+            ),
+            if (_selectedImageFile != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                child: Row(
+                  children: [
+                    Image.file(
+                      _selectedImageFile!,
+                      height: 40,
+                      width: 40,
+                      fit: BoxFit.cover,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(child: Text('Изображение прикреплено')),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () =>
+                          setState(() => _selectedImageFile = null),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              onPressed: _addNewContent,
+              child: const Text('Опубликовать'),
+            ),
+            const SizedBox(height: 100), // Отступ для нижней панели
+          ],
+        ),
+      );
+    }
+  }
+
+  void _addNewContent() async {
+    final title = _adminTitleController.text.trim();
+    final content = _adminContentController.text.trim();
+    String imageFileName = _adminImageController.text.trim();
+
+    // Проверяем, что установлен валидный токен GitHub
+    if (_githubToken.contains('ВАШ_ТОКЕН') || _githubToken.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Ошибка: Вставьте ваш реальный GitHub токен в код (main.dart)',
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Проверка заполненности обязательных полей
+    if (title.isEmpty || content.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Заполните заголовок и текст')),
+      );
+      return;
+    }
+
+    if (_selectedImageFile != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Загрузка картинки на сервер...')),
+      );
+      imageFileName = 'user_img_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      bool imgSuccess = await dataManager.uploadImageToGitHub(
+        _selectedImageFile!,
+        imageFileName,
+        _githubToken,
+      );
+      if (!imgSuccess) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ошибка загрузки картинки!')),
+          );
+        }
+        return;
+      }
+    }
+
+    int newId = 1;
+    final allItems = _adminAddType == 'Статья'
+        ? [...userData.articles, ...appData.articles]
+        : [...userData.reviews, ...appData.reviews];
+    if (allItems.isNotEmpty) {
+      newId = allItems.map((e) => e.id).reduce((a, b) => a > b ? a : b) + 1;
+    }
+
+    final newItem = Article(
+      id: newId,
+      title: title,
+      content: content,
+      image: imageFileName,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      if (_adminAddType == 'Статья') {
+        userData.articles.insert(0, newItem);
+      } else {
+        userData.reviews.insert(0, newItem);
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Сохранение и отправка на GitHub...')),
+    );
+
+    // Сохраняем в локальный файл кэша, чтобы данные не исчезли при следующем запуске
+    await dataManager.saveLocalUserData(userData);
+
+    _adminTitleController.clear();
+    _adminContentController.clear();
+    _adminImageController.clear();
+
+    // Отправляем изменения на GitHub (обновит user_data.json и version.json)
+    bool success = await dataManager.uploadUserDataToGitHub(
+      userData,
+      _githubToken,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _selectedImageFile = null;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Успешно добавлено: $_adminAddType')),
+    );
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Успешно опубликовано у всех: $_adminAddType')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ошибка отправки на сервер! (Проверьте токен)'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteContent(Article item, bool isArticle) async {
+    setState(() {
+      if (isArticle) {
+        userData.articles.removeWhere((e) => e.id == item.id);
+      } else {
+        userData.reviews.removeWhere((e) => e.id == item.id);
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Удаление и обновление на GitHub...')),
+    );
+
+    await dataManager.saveLocalUserData(userData);
+    bool success = await dataManager.uploadUserDataToGitHub(
+      userData,
+      _githubToken,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Успешно удалено!')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ошибка при удалении на сервере!')),
       );
     }
   }
@@ -712,55 +1109,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _searchQuery = value;
           });
         },
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    int index,
-    IconData outlineIcon,
-    IconData solidIcon,
-    String label,
-  ) {
-    final isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutQuint,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.blue.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? solidIcon : outlineIcon,
-              color: isSelected ? Colors.blue : Colors.grey.shade500,
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutQuint,
-              child: Container(
-                width: isSelected ? null : 0,
-                padding: EdgeInsets.only(left: isSelected ? 8.0 : 0),
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -795,7 +1143,7 @@ class ProductDetailScreen extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               final shareText =
-                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/download/12/app-release.apk)';
+                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}';
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Загрузка фото для отправки...'),
@@ -1053,12 +1401,16 @@ class ContentDetailScreen extends StatelessWidget {
   final Article item;
   final String pageTitle;
   final String shareEmoji;
+  final bool canDelete;
+  final VoidCallback? onDelete;
 
   const ContentDetailScreen({
     super.key,
     required this.item,
     required this.pageTitle,
     required this.shareEmoji,
+    this.canDelete = false,
+    this.onDelete,
   });
 
   @override
@@ -1074,11 +1426,42 @@ class ContentDetailScreen extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          if (canDelete)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Удаление'),
+                    content: const Text(
+                      'Вы уверены, что хотите удалить эту запись?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Отмена'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx); // Закрываем диалог
+                          Navigator.pop(context); // Закрываем экран статьи
+                          if (onDelete != null) onDelete!();
+                        },
+                        child: const Text(
+                          'Удалить',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () async {
-              final shareText =
-                  '$shareEmoji ${item.title}\n\n${item.content}\n\n(Скачано с INFINITY: https://github.com/sdfasdgasdfwe3/shop_app_data/releases/download/12/app-release.apk)';
+              final shareText = '$shareEmoji ${item.title}\n\n${item.content}';
 
               if (imageUrl.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(

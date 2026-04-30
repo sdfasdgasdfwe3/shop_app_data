@@ -12,6 +12,7 @@ class DataManager {
   final String repoUrl =
       "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main";
   final String fileName = "data.json";
+  final String userFileName = "user_data.json";
 
   int remoteAppVersion = 1;
   String appUpdateUrl = "";
@@ -30,6 +31,22 @@ class DataManager {
       debugPrint("Ошибка чтения локального файла: $e");
     }
     return AppData(products: [], articles: [], categories: [], reviews: []);
+  }
+
+  Future<UserData> getLocalUserData() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/$userFileName');
+
+      if (await file.exists()) {
+        final jsonString = await file.readAsString();
+        final jsonMap = jsonDecode(jsonString);
+        return UserData.fromJson(jsonMap);
+      }
+    } catch (e) {
+      debugPrint("Ошибка чтения локального user_data.json: $e");
+    }
+    return UserData(articles: [], reviews: []);
   }
 
   Future<bool> syncWithGitHub() async {
@@ -58,6 +75,15 @@ class DataManager {
             final file = File('${directory.path}/$fileName');
 
             await file.writeAsString(dataResponse.body);
+
+            // Также скачиваем user_data.json, если он существует
+            final userDataResponse = await http.get(
+              Uri.parse('$repoUrl/$userFileName?t=$timestamp'),
+            );
+            if (userDataResponse.statusCode == 200) {
+              final userFile = File('${directory.path}/$userFileName');
+              await userFile.writeAsString(userDataResponse.body);
+            }
             await prefs.setInt('version', remoteVersion);
             return true;
           }
@@ -67,5 +93,147 @@ class DataManager {
       debugPrint("Ошибка синхронизации (нет интернета): $e");
     }
     return false;
+  }
+
+  Future<void> saveLocalData(AppData data) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/$fileName');
+      final jsonString = jsonEncode(data.toJson());
+      await file.writeAsString(jsonString);
+    } catch (e) {
+      debugPrint("Ошибка записи локального файла: $e");
+    }
+  }
+
+  Future<void> saveLocalUserData(UserData data) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/$userFileName');
+      final jsonString = jsonEncode(data.toJson());
+      await file.writeAsString(jsonString);
+    } catch (e) {
+      debugPrint("Ошибка записи локального user_data.json: $e");
+    }
+  }
+
+  Future<bool> uploadUserDataToGitHub(UserData data, String token) async {
+    final String dataApiUrl =
+        "https://api.github.com/repos/sdfasdgasdfwe3/shop_app_data/contents/$userFileName";
+    final String versionApiUrl =
+        "https://api.github.com/repos/sdfasdgasdfwe3/shop_app_data/contents/version.json";
+
+    try {
+      // 1. Получаем текущий SHA user_data.json (нужен для перезаписи существующего файла)
+      final dataGet = await http.get(
+        Uri.parse(dataApiUrl),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/vnd.github.v3+json",
+        },
+      );
+
+      String? dataSha;
+      if (dataGet.statusCode == 200) dataSha = jsonDecode(dataGet.body)['sha'];
+
+      // 2. Отправляем обновленный user_data.json (с форматом и поддержкой кириллицы)
+      final jsonString = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(data.toJson());
+      final dataBase64 = base64Encode(utf8.encode(jsonString));
+
+      final dataPut = await http.put(
+        Uri.parse(dataApiUrl),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "message":
+              "Обновление user_data.json (добавлен контент из приложения)",
+          "content": dataBase64,
+          "sha": ?dataSha,
+        }),
+      );
+
+      if (dataPut.statusCode != 200 && dataPut.statusCode != 201) return false;
+
+      // 3. Получаем SHA и содержимое version.json
+      final versionGet = await http.get(
+        Uri.parse(versionApiUrl),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/vnd.github.v3+json",
+        },
+      );
+
+      int currentVersion = 1;
+      String? versionSha;
+      Map<String, dynamic> vData = {"version": 1};
+
+      if (versionGet.statusCode == 200) {
+        final vJson = jsonDecode(versionGet.body);
+        versionSha = vJson['sha'];
+        final decodedStr = utf8.decode(
+          base64Decode(vJson['content'].replaceAll('\n', '')),
+        );
+        vData = jsonDecode(decodedStr);
+        currentVersion = vData['version'] ?? 1;
+      }
+
+      // 4. Повышаем версию и отправляем
+      vData['version'] = currentVersion + 1;
+      final vBase64 = base64Encode(
+        utf8.encode(const JsonEncoder.withIndent('  ').convert(vData)),
+      );
+
+      final versionPut = await http.put(
+        Uri.parse(versionApiUrl),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "message": "Авто-повышение версии до ${currentVersion + 1}",
+          "content": vBase64,
+          "sha": ?versionSha,
+        }),
+      );
+
+      return versionPut.statusCode == 200 || versionPut.statusCode == 201;
+    } catch (e) {
+      debugPrint("Ошибка GitHub API: $e");
+      return false;
+    }
+  }
+
+  Future<bool> uploadImageToGitHub(
+    File imageFile,
+    String fileName,
+    String token,
+  ) async {
+    final String apiUrl =
+        "https://api.github.com/repos/sdfasdgasdfwe3/shop_app_data/contents/images/$fileName";
+
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final base64String = base64Encode(bytes);
+
+      final response = await http.put(
+        Uri.parse(apiUrl),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "message": "Загрузка картинки $fileName",
+          "content": base64String,
+        }),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint("Ошибка загрузки картинки: $e");
+      return false;
+    }
   }
 }

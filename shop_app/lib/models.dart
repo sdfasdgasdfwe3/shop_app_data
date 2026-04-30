@@ -23,6 +23,38 @@ class AppData {
       reviews: reviewsList.map((i) => Article.fromJson(i)).toList(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'products': products.map((x) => x.toJson()).toList(),
+      'articles': articles.map((x) => x.toJson()).toList(),
+      'categories': categories,
+      'reviews': reviews.map((x) => x.toJson()).toList(),
+    };
+  }
+}
+
+class UserData {
+  final List<Article> articles;
+  final List<Article> reviews;
+
+  UserData({required this.articles, required this.reviews});
+
+  factory UserData.fromJson(Map<String, dynamic> json) {
+    var articlesList = json['articles'] as List? ?? [];
+    var reviewsList = json['reviews'] as List? ?? [];
+    return UserData(
+      articles: articlesList.map((i) => Article.fromJson(i)).toList(),
+      reviews: reviewsList.map((i) => Article.fromJson(i)).toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'articles': articles.map((x) => x.toJson()).toList(),
+      'reviews': reviews.map((x) => x.toJson()).toList(),
+    };
+  }
 }
 
 class Product {
@@ -55,6 +87,18 @@ class Product {
       category: json['category'] ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'image': image,
+      'price': price,
+      'points': points,
+      'category': category,
+    };
+  }
 }
 
 class Article {
@@ -77,5 +121,9 @@ class Article {
       content: json['content'],
       image: json['image'] ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'title': title, 'content': content, 'image': image};
   }
 }
