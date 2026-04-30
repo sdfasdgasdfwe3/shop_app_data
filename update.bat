@@ -16,7 +16,14 @@ rem Create a commit with the current date and time
 git commit -m "Auto-update database and code: %date% %time%"
 if %errorlevel% neq 0 (
     echo.
-    echo No changes found to commit.
+    echo No new changes found to commit. Checking for pending commits to push...
+)
+
+rem Pull latest changes from GitHub to avoid conflicts
+git pull origin main --rebase
+if %errorlevel% neq 0 (
+    echo.
+    echo Error: Failed to pull data from GitHub. Please resolve conflicts manually.
     goto end
 )
 

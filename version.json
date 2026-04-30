@@ -1,13 +1,6 @@
 {
-<<<<<<< HEAD
-  "version": 73,
-  "last_updated": "2026-04-21",
-  "app_version": 12,
-  "app_update_url": "https://github.com/sdfasdgasdfwe3/shop_app_data/releases/download/12/app-release.apk"
-=======
-  "version": 66,
-  "last_updated": "2026-04-30",
+  "version": 74,
+  "last_updated": "2026-05-01",
   "app_version": 13,
   "app_update_url": "https://github.com/sdfasdgasdfwe3/shop_app_data/releases/download/13/app-release.apk"
->>>>>>> 95a4110 (Auto-update database and code: 01.05.2026  4:42:24,37)
 }
