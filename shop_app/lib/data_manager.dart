@@ -207,7 +207,7 @@ class DataManager {
     }
   }
 
-  Future<bool> uploadImageToGitHub(
+  Future<String?> uploadImageToGitHub(
     File imageFile,
     String fileName,
     String token,
@@ -222,6 +222,7 @@ class DataManager {
       final response = await http.put(
         Uri.parse(apiUrl),
         headers: {
+          "Accept": "application/vnd.github.v3+json",
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",
         },
@@ -230,10 +231,17 @@ class DataManager {
           "content": base64String,
         }),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return null;
+      }
+      try {
+        final errorData = jsonDecode(response.body);
+        return "Сервер: ${errorData['message']}";
+      } catch (_) {
+        return "Ошибка сервера: ${response.statusCode}";
+      }
     } catch (e) {
-      debugPrint("Ошибка загрузки картинки: $e");
-      return false;
+      return "Системная ошибка: $e";
     }
   }
 }

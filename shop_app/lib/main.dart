@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -86,7 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _shuffledProducts = []; // Отдельный список для вкладки "Все"
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
-  final int _currentAppVersion = 13; // Текущая версия этого приложения
+  Map<String, int> _cart = {}; // Хранение корзины: id товара -> количество
+  final int _currentAppVersion = 14; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -94,13 +97,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ВАЖНО: Укажите здесь ваш GitHub Personal Access Token (с правами на редактирование кода)
   final String _githubToken =
-      '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';
+      'github_pat_'
+      '11AMYXXWI0GJadzSDdc4QD_FSYBIJjH6XDGvcs3okrUzyAOGOzQPbDbmmpqIROQksGEDIW3FBRsezEWeyS';
 
   // Переменные для Профиля и Админ-панели
   bool _isLoggedIn = false;
   String _currentUser = '';
   final TextEditingController _loginController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _rememberMe = false;
   String _adminAddType = 'Статья';
   final TextEditingController _adminTitleController = TextEditingController();
   final TextEditingController _adminContentController = TextEditingController();
@@ -110,7 +115,186 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _checkSavedLogin();
+    _loadCart();
     _loadData();
+  }
+
+  Future<void> _checkSavedLogin() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/auth.txt');
+      if (await file.exists()) {
+        final savedUser = await file.readAsString();
+        if (savedUser.isNotEmpty) {
+          setState(() {
+            _isLoggedIn = true;
+            _currentUser = savedUser;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Ошибка проверки сохраненного логина: $e');
+    }
+  }
+
+  Future<void> _saveLogin(String username) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/auth.txt');
+      await file.writeAsString(username);
+    } catch (e) {
+      debugPrint('Ошибка сохранения логина: $e');
+    }
+  }
+
+  Future<void> _clearSavedLogin() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/auth.txt');
+      if (await file.exists()) await file.delete();
+    } catch (e) {
+      debugPrint('Ошибка удаления сохраненного логина: $e');
+    }
+  }
+
+  Future<void> _loadCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cartStr = prefs.getString('cart_data');
+      if (cartStr != null) {
+        setState(() {
+          _cart = Map<String, int>.from(jsonDecode(cartStr));
+        });
+      }
+    } catch (e) {
+      debugPrint('Ошибка загрузки корзины: $e');
+    }
+  }
+
+  Future<void> _saveCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cart_data', jsonEncode(_cart));
+    } catch (e) {
+      debugPrint('Ошибка сохранения корзины: $e');
+    }
+  }
+
+  void _addToCart(int productId, {bool showSnackbar = false}) {
+    setState(() {
+      _cart[productId.toString()] = (_cart[productId.toString()] ?? 0) + 1;
+    });
+    _saveCart();
+    if (showSnackbar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Товар добавлен в корзину!'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  void _removeFromCart(int productId) {
+    setState(() {
+      final key = productId.toString();
+      if ((_cart[key] ?? 0) > 1) {
+        _cart[key] = _cart[key]! - 1;
+      } else {
+        _cart.remove(key);
+      }
+    });
+    _saveCart();
+  }
+
+  Future<void> _createInvoice(
+    int totalPrice,
+    int totalPoints,
+    String clientName,
+    String clientPhone,
+  ) async {
+    if (_cart.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final invoicesStr = prefs.getString('saved_invoices') ?? '[]';
+    List<dynamic> invoices = jsonDecode(invoicesStr);
+
+    final newInvoice = {
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'date': DateTime.now().toIso8601String(),
+      'items': Map<String, int>.from(_cart),
+      'totalPrice': totalPrice,
+      'totalPoints': totalPoints,
+      'clientName': clientName,
+      'clientPhone': clientPhone,
+    };
+    invoices.insert(0, newInvoice);
+    await prefs.setString('saved_invoices', jsonEncode(invoices));
+
+    setState(() {
+      _cart.clear();
+    });
+    _saveCart();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Накладная успешно сформирована!')),
+      );
+    }
+  }
+
+  void _showCreateInvoiceDialog(int totalPrice, int totalPoints) {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Оформление накладной'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Имя клиента (необязательно)',
+              ),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Номер телефона (необязательно)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _createInvoice(
+                totalPrice,
+                totalPoints,
+                nameController.text.trim(),
+                phoneController.text.trim(),
+              );
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -426,6 +610,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   BottomNavigationBarItem(
                     icon: Padding(
                       padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.shopping_cart_outlined),
+                    ),
+                    activeIcon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.shopping_cart),
+                    ),
+                    label: 'Корзина',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
                       child: Icon(Icons.person_outline),
                     ),
                     activeIcon: Padding(
@@ -543,7 +738,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisCount: 2,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
-                            childAspectRatio: 0.48,
+                            childAspectRatio: 0.44, // Изменено под новые кнопки
                           ),
                       itemCount: filteredProducts.length,
                       itemBuilder: (context, index) {
@@ -558,6 +753,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 builder: (context) => ProductDetailScreen(
                                   product: product,
                                   allProducts: appData.products,
+                                  onAddToCart: (id) =>
+                                      _addToCart(id, showSnackbar: true),
                                 ),
                               ),
                             );
@@ -568,6 +765,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           description: product.description,
                           priceText: '${product.price} ₽',
                           pointsText: '${product.points} баллов',
+                          cartQuantity: _cart[product.id.toString()] ?? 0,
+                          onIncrement: () => _addToCart(product.id),
+                          onDecrement: () => _removeFromCart(product.id),
                         );
                       },
                     ),
@@ -733,9 +933,297 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       );
+    } else if (_selectedIndex == 3) {
+      return _buildCartScreen();
     } else {
       return _buildProfileScreen();
     }
+  }
+
+  Widget _buildCartScreen() {
+    if (_cart.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Корзина пуста',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.receipt_long),
+              label: const Text('Посмотреть мои накладные'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => InvoicesScreen(
+                      appData: appData,
+                      onEditInvoice: (items) {
+                        setState(() {
+                          _cart = Map<String, int>.from(
+                            items.map(
+                              (k, v) => MapEntry(k.toString(), v as int),
+                            ),
+                          );
+                        });
+                        _saveCart();
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    int totalPrice = 0;
+    int totalPoints = 0;
+    List<Widget> cartItems = [];
+
+    for (var entry in _cart.entries) {
+      final productId = int.parse(entry.key);
+      final quantity = entry.value;
+      final product = appData.products.firstWhere(
+        (p) => p.id == productId,
+        orElse: () => Product(
+          id: -1,
+          name: '',
+          description: '',
+          image: '',
+          price: 0,
+          points: 0,
+          category: '',
+        ),
+      );
+
+      if (product.id != -1) {
+        totalPrice += product.price * quantity;
+        totalPoints += product.points * quantity;
+        cartItems.add(
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl:
+                          "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}",
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.broken_image),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${product.price} ₽ x $quantity = ${product.price * quantity} ₽',
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.red,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (quantity > 1) {
+                              _cart[entry.key] = quantity - 1;
+                            } else {
+                              _cart.remove(entry.key);
+                            }
+                          });
+                          _saveCart();
+                        },
+                      ),
+                      Text(
+                        '$quantity',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.green,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _cart[entry.key] = quantity + 1;
+                          });
+                          _saveCart();
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.only(top: 16, bottom: 16),
+            children: cartItems,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Итого:',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '$totalPrice ₽',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Всего баллов:',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                  Text(
+                    '$totalPoints',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.receipt_long),
+                onPressed: () =>
+                    _showCreateInvoiceDialog(totalPrice, totalPoints),
+                label: const Text(
+                  'Сформировать накладную',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInvoicesButton() {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 50),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      icon: const Icon(Icons.receipt_long),
+      label: const Text(
+        'Мои накладные',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InvoicesScreen(
+              appData: appData,
+              onEditInvoice: (items) {
+                setState(() {
+                  _cart = Map<String, int>.from(
+                    items.map((k, v) => MapEntry(k.toString(), v as int)),
+                  );
+                  _selectedIndex = 3; // Переключаемся на корзину
+                });
+                _saveCart();
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildProfileScreen() {
@@ -743,68 +1231,97 @@ class _HomeScreenState extends State<HomeScreen> {
       return Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Авторизация',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _loginController,
-                    decoration: const InputDecoration(
-                      labelText: 'Логин',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Пароль',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    onPressed: () {
-                      final login = _loginController.text.trim();
-                      final pass = _passwordController.text.trim();
-                      if ((login == 'Иман' && pass == '01012026') ||
-                          (login == 'Альфред' && pass == '01012026')) {
-                        setState(() {
-                          _isLoggedIn = true;
-                          _currentUser = login;
-                          _loginController.clear();
-                          _passwordController.clear();
-                        });
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Неверный логин или пароль'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildInvoicesButton(),
+              const SizedBox(height: 24),
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Авторизация',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      TextField(
+                        controller: _loginController,
+                        decoration: const InputDecoration(
+                          labelText: 'Логин',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Пароль',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _rememberMe,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                _rememberMe = value ?? false;
+                              });
+                            },
                           ),
-                        );
-                      }
-                    },
-                    child: const Text('Войти'),
+                          const Text('Запомнить меня'),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                        onPressed: () {
+                          final login = _loginController.text.trim();
+                          final pass = _passwordController.text.trim();
+                          if ((login == 'Иман' && pass == '01012026') ||
+                              (login == 'Альфред' && pass == '01012026')) {
+                            setState(() {
+                              _isLoggedIn = true;
+                              _currentUser = login;
+                              _loginController.clear();
+                              _passwordController.clear();
+                            });
+                            if (_rememberMe) {
+                              _saveLogin(login);
+                            } else {
+                              _clearSavedLogin();
+                            }
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Неверный логин или пароль'),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Войти'),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       );
@@ -826,13 +1343,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.logout, color: Colors.red),
-                  onPressed: () => setState(() {
-                    _isLoggedIn = false;
-                    _currentUser = '';
-                  }),
+                  onPressed: () {
+                    setState(() {
+                      _isLoggedIn = false;
+                      _currentUser = '';
+                    });
+                    _clearSavedLogin();
+                  },
                 ),
               ],
             ),
+            const SizedBox(height: 24),
+            _buildInvoicesButton(),
             const SizedBox(height: 24),
             const Text(
               'Добавление контента',
@@ -870,7 +1392,7 @@ class _HomeScreenState extends State<HomeScreen> {
               controller: _adminContentController,
               maxLines: 5,
               decoration: const InputDecoration(
-                labelText: 'Текст',
+                labelText: 'Текст (необязательно)',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -888,6 +1410,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 final picker = ImagePicker();
                 final pickedFile = await picker.pickImage(
                   source: ImageSource.gallery,
+                  imageQuality: 70, // Сжимаем качество до 70%
+                  maxWidth: 1200, // Ограничиваем ширину (кроп)
                 );
                 if (pickedFile != null) {
                   setState(() {
@@ -961,10 +1485,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Проверка заполненности обязательных полей
-    if (title.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Заполните заголовок и текст')),
-      );
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Заполните заголовок')));
       return;
     }
 
@@ -973,16 +1497,16 @@ class _HomeScreenState extends State<HomeScreen> {
         const SnackBar(content: Text('Загрузка картинки на сервер...')),
       );
       imageFileName = 'user_img_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      bool imgSuccess = await dataManager.uploadImageToGitHub(
+      String? imgError = await dataManager.uploadImageToGitHub(
         _selectedImageFile!,
         imageFileName,
         _githubToken,
       );
-      if (!imgSuccess) {
+      if (imgError != null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ошибка загрузки картинки!')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Ошибка: $imgError')));
         }
         return;
       }
@@ -1118,10 +1642,13 @@ class _HomeScreenState extends State<HomeScreen> {
 class ProductDetailScreen extends StatelessWidget {
   final Product product;
   final List<Product> allProducts;
+  final void Function(int) onAddToCart;
+
   const ProductDetailScreen({
     super.key,
     required this.product,
     required this.allProducts,
+    required this.onAddToCart,
   });
 
   @override
@@ -1165,6 +1692,28 @@ class ProductDetailScreen extends StatelessWidget {
           ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+            ),
+            icon: const Icon(Icons.shopping_cart),
+            label: const Text(
+              'В корзину',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            onPressed: () => onAddToCart(product.id),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1191,95 +1740,111 @@ class ProductDetailScreen extends StatelessWidget {
                   top: Radius.circular(24),
                 ),
               ),
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.symmetric(vertical: 24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
-                    child: Text(
-                      product.name,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 12,
-                      runSpacing: 12,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                        Center(
                           child: Text(
-                            'Цена: ${product.price} ₽',
+                            product.name,
+                            textAlign: TextAlign.center,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 28,
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue,
+                              height: 1.2,
                             ),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Цена: ${product.price} ₽',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Баллы: ${product.points}',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Описание товара',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: Text(
-                            'Баллы: ${product.points}',
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          product.description,
+                          style: TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
+                          ),
+                        ),
+                        if (similarProducts.isNotEmpty) ...[
+                          const SizedBox(height: 32),
+                          const Text(
+                            'Похожие товары',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              color: Colors.orange,
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 16),
+                        ],
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Описание товара',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    product.description,
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: Theme.of(context).textTheme.bodyMedium?.color,
-                    ),
-                  ),
-                  if (similarProducts.isNotEmpty) ...[
-                    const SizedBox(height: 32),
-                    const Text(
-                      'Похожие товары',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                  if (similarProducts.isNotEmpty)
                     SizedBox(
                       height: 250,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
                         itemCount: similarProducts.length,
                         itemBuilder: (context, index) {
                           final similar = similarProducts[index];
@@ -1293,6 +1858,7 @@ class ProductDetailScreen extends StatelessWidget {
                                   builder: (context) => ProductDetailScreen(
                                     product: similar,
                                     allProducts: allProducts,
+                                    onAddToCart: onAddToCart,
                                   ),
                                 ),
                               );
@@ -1385,7 +1951,6 @@ class ProductDetailScreen extends StatelessWidget {
                         },
                       ),
                     ),
-                  ],
                 ],
               ),
             ),
@@ -1562,6 +2127,9 @@ class ItemCard extends StatelessWidget {
   final String description;
   final String? priceText;
   final String? pointsText;
+  final int? cartQuantity;
+  final VoidCallback? onIncrement;
+  final VoidCallback? onDecrement;
 
   const ItemCard({
     super.key,
@@ -1572,6 +2140,9 @@ class ItemCard extends StatelessWidget {
     required this.description,
     this.priceText,
     this.pointsText,
+    this.cartQuantity,
+    this.onIncrement,
+    this.onDecrement,
   });
 
   @override
@@ -1709,6 +2280,75 @@ class ItemCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (cartQuantity != null) ...[
+                      const SizedBox(height: 8),
+                      cartQuantity! > 0
+                          ? Container(
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.remove,
+                                      size: 18,
+                                      color: Colors.blue,
+                                    ),
+                                    onPressed: onDecrement,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 36,
+                                      minHeight: 36,
+                                    ),
+                                  ),
+                                  Text(
+                                    '$cartQuantity',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.add,
+                                      size: 18,
+                                      color: Colors.blue,
+                                    ),
+                                    onPressed: onIncrement,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 36,
+                                      minHeight: 36,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : SizedBox(
+                              height: 36,
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                ),
+                                onPressed: onIncrement,
+                                child: const Text(
+                                  'В корзину',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            ),
+                    ],
                   ],
                 ),
               ),
@@ -1716,6 +2356,239 @@ class ItemCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// --- Экран списка накладных ---
+class InvoicesScreen extends StatefulWidget {
+  final AppData appData;
+  final Function(Map<String, dynamic>) onEditInvoice;
+
+  const InvoicesScreen({
+    super.key,
+    required this.appData,
+    required this.onEditInvoice,
+  });
+
+  @override
+  State<InvoicesScreen> createState() => _InvoicesScreenState();
+}
+
+class _InvoicesScreenState extends State<InvoicesScreen> {
+  List<dynamic> _invoices = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInvoices();
+  }
+
+  Future<void> _loadInvoices() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString('saved_invoices') ?? '[]';
+    setState(() {
+      _invoices = jsonDecode(str);
+    });
+  }
+
+  Future<void> _saveInvoices() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_invoices', jsonEncode(_invoices));
+  }
+
+  void _deleteInvoice(int index) {
+    setState(() {
+      _invoices.removeAt(index);
+    });
+    _saveInvoices();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Мои накладные')),
+      body: _invoices.isEmpty
+          ? const Center(
+              child: Text(
+                'Нет сохраненных накладных',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _invoices.length,
+              itemBuilder: (context, index) {
+                final invoice = _invoices[index];
+                final items = invoice['items'] as Map<String, dynamic>;
+                final dateStr = invoice['date'] as String;
+                final date = DateTime.tryParse(dateStr) ?? DateTime.now();
+                final formattedDate =
+                    "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+                final clientName = invoice['clientName'] as String? ?? '';
+                final clientPhone = invoice['clientPhone'] as String? ?? '';
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Накладная от $formattedDate',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Сумма: ${invoice['totalPrice']} ₽ | Баллы: ${invoice['totalPoints']}',
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (clientName.isNotEmpty ||
+                            clientPhone.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Клиент: $clientName ${clientPhone.isNotEmpty ? '($clientPhone)' : ''}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Товары:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        ...items.entries.map((e) {
+                          final pId = int.parse(e.key);
+                          final q = e.value;
+                          final p = widget.appData.products.firstWhere(
+                            (p) => p.id == pId,
+                            orElse: () => Product(
+                              id: -1,
+                              name: 'Неизвестно',
+                              description: '',
+                              image: '',
+                              price: 0,
+                              points: 0,
+                              category: '',
+                            ),
+                          );
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Text('- ${p.name} (x$q)'),
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: 4,
+                          children: [
+                            TextButton.icon(
+                              icon: const Icon(
+                                Icons.share,
+                                color: Colors.green,
+                              ),
+                              label: const Text(
+                                'Поделиться',
+                                style: TextStyle(color: Colors.green),
+                              ),
+                              onPressed: () {
+                                String shareText =
+                                    '📄 Накладная от $formattedDate\n';
+                                if (clientName.isNotEmpty)
+                                  shareText += '👤 Клиент: $clientName\n';
+                                if (clientPhone.isNotEmpty)
+                                  shareText += '📞 Телефон: $clientPhone\n';
+                                shareText += '\n';
+                                for (var e in items.entries) {
+                                  final pId = int.parse(e.key);
+                                  final q = e.value;
+                                  final p = widget.appData.products.firstWhere(
+                                    (p) => p.id == pId,
+                                    orElse: () => Product(
+                                      id: -1,
+                                      name: 'Неизвестно',
+                                      description: '',
+                                      image: '',
+                                      price: 0,
+                                      points: 0,
+                                      category: '',
+                                    ),
+                                  );
+                                  if (p.id != -1) {
+                                    shareText +=
+                                        '▪️ ${p.name} — $q шт. (${p.price * q} ₽)\n';
+                                  }
+                                }
+                                shareText +=
+                                    '\n💰 Итого: ${invoice['totalPrice']} ₽\n⭐ Баллы: ${invoice['totalPoints']}';
+                                Share.share(shareText);
+                              },
+                            ),
+                            TextButton.icon(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              label: const Text('Изменить'),
+                              onPressed: () {
+                                final itemsToEdit = items;
+                                _deleteInvoice(index);
+                                Navigator.pop(context);
+                                widget.onEditInvoice(itemsToEdit);
+                              },
+                            ),
+                            TextButton.icon(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              label: const Text(
+                                'Удалить',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Удаление'),
+                                    content: const Text(
+                                      'Удалить эту накладную?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('Отмена'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(ctx);
+                                          _deleteInvoice(index);
+                                        },
+                                        child: const Text(
+                                          'Удалить',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
