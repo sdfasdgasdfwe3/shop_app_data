@@ -1,5 +1,12 @@
 {
-  "articles": [],
+  "articles": [
+    {
+      "id": 15,
+      "title": "аыфваыв",
+      "content": "",
+      "image": "user_img_1777615999345.jpg"
+    }
+  ],
   "reviews": [
     {
       "id": 14,
