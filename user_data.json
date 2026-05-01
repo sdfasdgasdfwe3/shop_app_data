@@ -1,11 +1,4 @@
 {
   "articles": [],
-  "reviews": [
-    {
-      "id": 13,
-      "title": "вышли паразиты",
-      "content": "",
-      "image": "user_img_1777649723750.jpg"
-    }
-  ]
+  "reviews": []
 }
