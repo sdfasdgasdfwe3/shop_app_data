@@ -81,8 +81,30 @@ class DataManager {
               Uri.parse('$repoUrl/$userFileName?t=$timestamp'),
             );
             if (userDataResponse.statusCode == 200) {
-              final userFile = File('${directory.path}/$userFileName');
-              await userFile.writeAsString(userDataResponse.body);
+              try {
+                final remoteUserData = jsonDecode(userDataResponse.body);
+                final remoteArticles =
+                    remoteUserData['articles'] as List? ?? [];
+                final remoteReviews = remoteUserData['reviews'] as List? ?? [];
+
+                final localUserData = await getLocalUserData();
+
+                // Защита от случайного обнуления: если сервер прислал пустой файл, а локально есть данные,
+                // значит файл на GitHub был случайно затерт при обновлении. Не удаляем локальные данные!
+                if (remoteArticles.isEmpty &&
+                    remoteReviews.isEmpty &&
+                    (localUserData.articles.isNotEmpty ||
+                        localUserData.reviews.isNotEmpty)) {
+                  debugPrint(
+                    "Сервер прислал пустую базу. Локальные данные сохранены для безопасности.",
+                  );
+                } else {
+                  final userFile = File('${directory.path}/$userFileName');
+                  await userFile.writeAsString(userDataResponse.body);
+                }
+              } catch (e) {
+                debugPrint("Ошибка парсинга удаленного user_data.json: $e");
+              }
             }
             await prefs.setInt('version', remoteVersion);
             return true;

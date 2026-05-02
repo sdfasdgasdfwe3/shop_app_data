@@ -1115,7 +1115,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         Container(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 140),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -1191,41 +1191,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildInvoicesButton() {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        minimumSize: const Size(double.infinity, 50),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      icon: const Icon(Icons.receipt_long),
-      label: const Text(
-        'Мои накладные',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => InvoicesScreen(
-              appData: appData,
-              onEditInvoice: (items) {
-                setState(() {
-                  _cart = Map<String, int>.from(
-                    items.map((k, v) => MapEntry(k.toString(), v as int)),
-                  );
-                  _selectedIndex = 3; // Переключаемся на корзину
-                });
-                _saveCart();
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildProfileScreen() {
     if (!_isLoggedIn) {
       return Center(
@@ -1234,8 +1199,6 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildInvoicesButton(),
-              const SizedBox(height: 24),
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -1353,8 +1316,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            _buildInvoicesButton(),
             const SizedBox(height: 24),
             const Text(
               'Добавление контента',

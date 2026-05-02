@@ -11,6 +11,7 @@ if exist shop_app\ git add shop_app\
 
 rem Remove admin.html from GitHub if it was pushed before
 git rm --cached admin.html >nul 2>&1
+git rm --cached user_data.json >nul 2>&1
 
 rem Create a commit with the current date and time
 git commit -m "Auto-update database and code: %date% %time%"
