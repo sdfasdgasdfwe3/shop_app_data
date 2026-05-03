@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 
 import 'models.dart';
 import 'data_manager.dart';
@@ -89,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   int _selectedIndex = 0; // 0 - Товары, 1 - Статьи, 2 - Отзывы
   Map<String, int> _cart = {}; // Хранение корзины: id товара -> количество
-  final int _currentAppVersion = 14; // Текущая версия этого приложения
+  final int _currentAppVersion = 15; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -1258,7 +1259,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           final login = _loginController.text.trim();
                           final pass = _passwordController.text.trim();
                           if ((login == 'Иман' && pass == '01012026') ||
-                              (login == 'Альфред' && pass == '01012026')) {
+                              (login == 'Альфред' && pass == '01012026') ||
+                              (login == 'Лола' && pass == '01012026') ||
+                              (login == 'Айшат' && pass == '01012026')) {
                             setState(() {
                               _isLoggedIn = true;
                               _currentUser = login;
@@ -2338,6 +2341,10 @@ class InvoicesScreen extends StatefulWidget {
 
 class _InvoicesScreenState extends State<InvoicesScreen> {
   List<dynamic> _invoices = [];
+  String _searchQuery = '';
+  final BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
+
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -2365,191 +2372,389 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     _saveInvoices();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Мои накладные')),
-      body: _invoices.isEmpty
-          ? const Center(
-              child: Text(
-                'Нет сохраненных накладных',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _invoices.length,
-              itemBuilder: (context, index) {
-                final invoice = _invoices[index];
-                final items = invoice['items'] as Map<String, dynamic>;
-                final dateStr = invoice['date'] as String;
-                final date = DateTime.tryParse(dateStr) ?? DateTime.now();
-                final formattedDate =
-                    "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-                final clientName = invoice['clientName'] as String? ?? '';
-                final clientPhone = invoice['clientPhone'] as String? ?? '';
+  void _printInvoice(Map<String, dynamic> invoiceData) async {
+    List<BluetoothDevice> devices = [];
+    try {
+      devices = await bluetooth.getBondedDevices();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка получения Bluetooth устройств: $e')),
+      );
+      return;
+    }
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Накладная от $formattedDate',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Сумма: ${invoice['totalPrice']} ₽ | Баллы: ${invoice['totalPoints']}',
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (clientName.isNotEmpty ||
-                            clientPhone.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Клиент: $clientName ${clientPhone.isNotEmpty ? '($clientPhone)' : ''}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Товары:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        ...items.entries.map((e) {
-                          final pId = int.parse(e.key);
-                          final q = e.value;
-                          final p = widget.appData.products.firstWhere(
-                            (p) => p.id == pId,
-                            orElse: () => Product(
-                              id: -1,
-                              name: 'Неизвестно',
-                              description: '',
-                              image: '',
-                              price: 0,
-                              points: 0,
-                              category: '',
-                            ),
-                          );
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 4.0),
-                            child: Text('- ${p.name} (x$q)'),
-                          );
-                        }),
-                        const SizedBox(height: 16),
-                        Wrap(
-                          alignment: WrapAlignment.end,
-                          spacing: 4,
-                          children: [
-                            TextButton.icon(
-                              icon: const Icon(
-                                Icons.share,
-                                color: Colors.green,
-                              ),
-                              label: const Text(
-                                'Поделиться',
-                                style: TextStyle(color: Colors.green),
-                              ),
-                              onPressed: () {
-                                String shareText =
-                                    '📄 Накладная от $formattedDate\n';
-                                if (clientName.isNotEmpty)
-                                  shareText += '👤 Клиент: $clientName\n';
-                                if (clientPhone.isNotEmpty)
-                                  shareText += '📞 Телефон: $clientPhone\n';
-                                shareText += '\n';
-                                for (var e in items.entries) {
-                                  final pId = int.parse(e.key);
-                                  final q = e.value;
-                                  final p = widget.appData.products.firstWhere(
-                                    (p) => p.id == pId,
-                                    orElse: () => Product(
-                                      id: -1,
-                                      name: 'Неизвестно',
-                                      description: '',
-                                      image: '',
-                                      price: 0,
-                                      points: 0,
-                                      category: '',
-                                    ),
-                                  );
-                                  if (p.id != -1) {
-                                    shareText +=
-                                        '▪️ ${p.name} — $q шт. (${p.price * q} ₽)\n';
-                                  }
-                                }
-                                shareText +=
-                                    '\n💰 Итого: ${invoice['totalPrice']} ₽\n⭐ Баллы: ${invoice['totalPoints']}';
-                                Share.share(shareText);
-                              },
-                            ),
-                            TextButton.icon(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              label: const Text('Изменить'),
-                              onPressed: () {
-                                final itemsToEdit = items;
-                                _deleteInvoice(index);
-                                Navigator.pop(context);
-                                widget.onEditInvoice(itemsToEdit);
-                              },
-                            ),
-                            TextButton.icon(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              label: const Text(
-                                'Удалить',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Удаление'),
-                                    content: const Text(
-                                      'Удалить эту накладную?',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(ctx),
-                                        child: const Text('Отмена'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(ctx);
-                                          _deleteInvoice(index);
-                                        },
-                                        child: const Text(
-                                          'Удалить',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+    BluetoothDevice? selectedDevice;
+
+    if (devices.isNotEmpty) {
+      selectedDevice = await showDialog<BluetoothDevice>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Выберите принтер'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: devices.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: const Icon(Icons.print),
+                  title: Text(devices[index].name ?? 'Неизвестное устройство'),
+                  subtitle: Text(devices[index].address ?? ''),
+                  onTap: () {
+                    Navigator.pop(context, devices[index]);
+                  },
                 );
               },
             ),
+          ),
+        ),
+      );
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Нет сопряженных Bluetooth принтеров')),
+      );
+      return;
+    }
+
+    if (selectedDevice == null) return; // User cancelled
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Подключение к ${selectedDevice.name}...')),
+    );
+
+    await bluetooth.connect(selectedDevice);
+
+    final isConnected = await bluetooth.isConnected ?? false;
+
+    if (isConnected) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Печать...')));
+
+      // --- Formatting and Printing ---
+      final dateStr = invoiceData['date'] as String;
+      final date = DateTime.tryParse(dateStr) ?? DateTime.now();
+      final formattedDate =
+          "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+      final clientName = invoiceData['clientName'] as String? ?? '';
+      final items = invoiceData['items'] as Map<String, dynamic>;
+
+      bluetooth.printCustom("НАКЛАДНАЯ", 3, 1); // size 3, align center
+      bluetooth.printCustom("от $formattedDate", 1, 1);
+      if (clientName.isNotEmpty) {
+        bluetooth.printCustom("Клиент: $clientName", 1, 0);
+      }
+      bluetooth.printCustom("--------------------------------", 1, 1);
+      bluetooth.printLeftRight("Товар", "Сумма", 1);
+      bluetooth.printCustom("--------------------------------", 1, 1);
+
+      for (var e in items.entries) {
+        final pId = int.parse(e.key);
+        final q = e.value;
+        final p = widget.appData.products.firstWhere(
+          (p) => p.id == pId,
+          orElse: () => Product(
+            id: -1,
+            name: 'Неизвестно',
+            price: 0,
+            points: 0,
+            category: '',
+            description: '',
+            image: '',
+          ),
+        );
+        if (p.id != -1) {
+          bluetooth.printCustom(p.name, 1, 0);
+          bluetooth.printLeftRight("  x$q шт.", "${p.price * q} R", 1);
+        }
+      }
+
+      bluetooth.printCustom("--------------------------------", 1, 1);
+      bluetooth.printLeftRight("ИТОГО:", "${invoiceData['totalPrice']} R", 2);
+      bluetooth.printLeftRight("Баллы:", "${invoiceData['totalPoints']}", 1);
+      bluetooth.printNewLine();
+      bluetooth.printNewLine();
+      bluetooth.paperCut();
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось подключиться к принтеру')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredInvoices = _invoices.where((invoice) {
+      final clientName = (invoice['clientName'] as String? ?? '').toLowerCase();
+      final clientPhone = (invoice['clientPhone'] as String? ?? '')
+          .toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return clientName.contains(query) || clientPhone.contains(query);
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Мои накладные')),
+      body: Column(
+        children: [
+          if (_invoices.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Поиск по имени или телефону...',
+                  prefixIcon: const Icon(Icons.search, color: Colors.blue),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Colors.blue, width: 2),
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
+          Expanded(
+            child: filteredInvoices.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Накладные не найдены',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: 8,
+                      bottom: 16,
+                    ),
+                    itemCount: filteredInvoices.length,
+                    itemBuilder: (context, index) {
+                      final invoice = filteredInvoices[index];
+                      final originalIndex = _invoices.indexOf(
+                        invoice,
+                      ); // Ищем реальный индекс для удаления/редактирования
+                      final items = invoice['items'] as Map<String, dynamic>;
+                      final dateStr = invoice['date'] as String;
+                      final date = DateTime.tryParse(dateStr) ?? DateTime.now();
+                      final formattedDate =
+                          "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+                      final clientName = invoice['clientName'] as String? ?? '';
+                      final clientPhone =
+                          invoice['clientPhone'] as String? ?? '';
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Накладная от $formattedDate',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Сумма: ${invoice['totalPrice']} ₽ | Баллы: ${invoice['totalPoints']}',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (clientName.isNotEmpty ||
+                                  clientPhone.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Клиент: $clientName ${clientPhone.isNotEmpty ? '($clientPhone)' : ''}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Товары:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              ...items.entries.map((e) {
+                                final pId = int.parse(e.key);
+                                final q = e.value;
+                                final p = widget.appData.products.firstWhere(
+                                  (p) => p.id == pId,
+                                  orElse: () => Product(
+                                    id: -1,
+                                    name: 'Неизвестно',
+                                    description: '',
+                                    image: '',
+                                    price: 0,
+                                    points: 0,
+                                    category: '',
+                                  ),
+                                );
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 4.0),
+                                  child: Text('- ${p.name} (x$q)'),
+                                );
+                              }),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  TextButton.icon(
+                                    icon: const Icon(
+                                      Icons.share,
+                                      color: Colors.green,
+                                    ),
+                                    label: const Text(
+                                      'Поделиться',
+                                      style: TextStyle(color: Colors.green),
+                                    ),
+                                    onPressed: () {
+                                      String shareText =
+                                          'Здравствуйте! Направляю детали заказа:\n\n📄 Накладная от $formattedDate\n';
+                                      if (clientName.isNotEmpty) {
+                                        shareText += '👤 Клиент: $clientName\n';
+                                      }
+                                      if (clientPhone.isNotEmpty) {
+                                        shareText +=
+                                            '📞 Телефон: $clientPhone\n';
+                                      }
+                                      shareText += '\n📋 Список товаров:\n';
+                                      int itemIndex = 1;
+                                      for (var e in items.entries) {
+                                        final pId = int.parse(e.key);
+                                        final q = e.value;
+                                        final p = widget.appData.products
+                                            .firstWhere(
+                                              (p) => p.id == pId,
+                                              orElse: () => Product(
+                                                id: -1,
+                                                name: 'Неизвестно',
+                                                description: '',
+                                                image: '',
+                                                price: 0,
+                                                points: 0,
+                                                category: '',
+                                              ),
+                                            );
+                                        if (p.id != -1) {
+                                          shareText +=
+                                              '$itemIndex. ${p.name} — $q шт. (${p.price * q} ₽)\n';
+                                          itemIndex++;
+                                        }
+                                      }
+                                      shareText +=
+                                          '\n💰 Итого к оплате: ${invoice['totalPrice']} ₽\n⭐ Начислено баллов: ${invoice['totalPoints']}';
+                                      Share.share(shareText);
+                                    },
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.print,
+                                          color: Colors.deepPurple,
+                                        ),
+                                        tooltip: 'Распечатать',
+                                        onPressed: () => _printInvoice(invoice),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: Colors.blue,
+                                        ),
+                                        tooltip: 'Изменить',
+                                        onPressed: () {
+                                          final itemsToEdit = items;
+                                          _deleteInvoice(originalIndex);
+                                          Navigator.pop(context);
+                                          widget.onEditInvoice(itemsToEdit);
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
+                                        ),
+                                        tooltip: 'Удалить',
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text('Удаление'),
+                                              content: const Text(
+                                                'Удалить эту накладную?',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx),
+                                                  child: const Text('Отмена'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(ctx);
+                                                    _deleteInvoice(
+                                                      originalIndex,
+                                                    );
+                                                  },
+                                                  child: const Text(
+                                                    'Удалить',
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
