@@ -495,6 +495,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    int totalCartItems = _cart.values.fold(0, (sum, item) => sum + item);
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -574,8 +576,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 elevation: 0,
                 type: BottomNavigationBarType.fixed,
                 selectedFontSize: 12,
-                items: const [
-                  BottomNavigationBarItem(
+                items: [
+                  const BottomNavigationBarItem(
                     icon: Padding(
                       padding: EdgeInsets.only(bottom: 4, top: 8),
                       child: Icon(Icons.shopping_bag_outlined),
@@ -586,7 +588,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     label: 'Товары',
                   ),
-                  BottomNavigationBarItem(
+                  const BottomNavigationBarItem(
                     icon: Padding(
                       padding: EdgeInsets.only(bottom: 4, top: 8),
                       child: Icon(Icons.article_outlined),
@@ -597,7 +599,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     label: 'Статьи',
                   ),
-                  BottomNavigationBarItem(
+                  const BottomNavigationBarItem(
                     icon: Padding(
                       padding: EdgeInsets.only(bottom: 4, top: 8),
                       child: Icon(Icons.rate_review_outlined),
@@ -610,16 +612,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   BottomNavigationBarItem(
                     icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.shopping_cart_outlined),
+                      padding: const EdgeInsets.only(bottom: 4, top: 8),
+                      child: Badge(
+                        isLabelVisible: totalCartItems > 0,
+                        label: Text('$totalCartItems'),
+                        child: const Icon(Icons.shopping_cart_outlined),
+                      ),
                     ),
                     activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.shopping_cart),
+                      padding: const EdgeInsets.only(bottom: 4, top: 8),
+                      child: Badge(
+                        isLabelVisible: totalCartItems > 0,
+                        label: Text('$totalCartItems'),
+                        child: const Icon(Icons.shopping_cart),
+                      ),
                     ),
                     label: 'Корзина',
                   ),
-                  BottomNavigationBarItem(
+                  const BottomNavigationBarItem(
                     icon: Padding(
                       padding: EdgeInsets.only(bottom: 4, top: 8),
                       child: Icon(Icons.person_outline),
@@ -1109,9 +1119,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 16.0, top: 8.0),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              icon: const Icon(Icons.delete_sweep, color: Colors.red),
+              label: const Text(
+                'Очистить корзину',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: () {
+                setState(() {
+                  _cart.clear();
+                });
+                _saveCart();
+              },
+            ),
+          ),
+        ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.only(top: 16, bottom: 16),
+            padding: const EdgeInsets.only(top: 8, bottom: 16),
             children: cartItems,
           ),
         ),
@@ -2402,6 +2431,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   title: Text(devices[index].name ?? 'Неизвестное устройство'),
                   subtitle: Text(devices[index].address ?? ''),
                   onTap: () {
+                    if (!mounted) return;
                     Navigator.pop(context, devices[index]);
                   },
                 );
@@ -2699,6 +2729,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                         onPressed: () {
                                           final itemsToEdit = items;
                                           _deleteInvoice(originalIndex);
+                                          if (!mounted) return;
                                           Navigator.pop(context);
                                           widget.onEditInvoice(itemsToEdit);
                                         },
@@ -2725,6 +2756,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                                 ),
                                                 TextButton(
                                                   onPressed: () {
+                                                    if (!mounted) return;
                                                     Navigator.pop(ctx);
                                                     _deleteInvoice(
                                                       originalIndex,
