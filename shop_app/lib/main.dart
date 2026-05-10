@@ -6,13 +6,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
-
 import 'models.dart';
 import 'data_manager.dart';
+import 'item_card.dart';
+import 'invoices_screen.dart';
+import 'product_detail_screen.dart';
+import 'content_detail_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
@@ -649,6 +650,52 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildGrid<T>({
+    required List<T> items,
+    required String emptyMessage,
+    required double childAspectRatio,
+    required Widget Function(T) itemBuilder,
+  }) {
+    return Expanded(
+      child: RefreshIndicator(
+        onRefresh: _loadData,
+        child: items.isEmpty
+            ? ListView(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Center(
+                      child: Text(
+                        emptyMessage,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : GridView.builder(
+                padding: const EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: 120,
+                ),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: childAspectRatio,
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, index) => itemBuilder(items[index]),
+              ),
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -717,72 +764,37 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadData,
-              child: filteredProducts.isEmpty
-                  ? ListView(
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.all(32.0),
-                          child: Center(
-                            child: Text(
-                              'Товары не найдены',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        top: 16,
-                        bottom: 120,
+          _buildGrid<Product>(
+            items: filteredProducts,
+            emptyMessage: 'Товары не найдены',
+            childAspectRatio: 0.44,
+            itemBuilder: (product) {
+              final imageUrl =
+                  "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}";
+              return ItemCard(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProductDetailScreen(
+                        product: product,
+                        allProducts: appData.products,
+                        onAddToCart: (id) => _addToCart(id, showSnackbar: true),
                       ),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.44, // Изменено под новые кнопки
-                          ),
-                      itemCount: filteredProducts.length,
-                      itemBuilder: (context, index) {
-                        final product = filteredProducts[index];
-                        final imageUrl =
-                            "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}";
-                        return ItemCard(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ProductDetailScreen(
-                                  product: product,
-                                  allProducts: appData.products,
-                                  onAddToCart: (id) =>
-                                      _addToCart(id, showSnackbar: true),
-                                ),
-                              ),
-                            );
-                          },
-                          imageUrl: imageUrl,
-                          placeholderIcon: Icons.shopping_bag,
-                          title: product.name,
-                          description: product.description,
-                          priceText: '${product.price} ₽',
-                          pointsText: '${product.points} баллов',
-                          cartQuantity: _cart[product.id.toString()] ?? 0,
-                          onIncrement: () => _addToCart(product.id),
-                          onDecrement: () => _removeFromCart(product.id),
-                        );
-                      },
                     ),
-            ),
+                  );
+                },
+                imageUrl: imageUrl,
+                placeholderIcon: Icons.shopping_bag,
+                title: product.name,
+                description: product.description,
+                priceText: '${product.price} ₽',
+                pointsText: '${product.points} баллов',
+                cartQuantity: _cart[product.id.toString()] ?? 0,
+                onIncrement: () => _addToCart(product.id),
+                onDecrement: () => _removeFromCart(product.id),
+              );
+            },
           ),
         ],
       );
@@ -796,72 +808,38 @@ class _HomeScreenState extends State<HomeScreen> {
       return Column(
         children: [
           _buildSearchBar('Поиск статей...'),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadData,
-              child: filteredArticles.isEmpty
-                  ? ListView(
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.all(32.0),
-                          child: Center(
-                            child: Text(
-                              'Статьи не найдены',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        top: 16,
-                        bottom: 120,
+          _buildGrid<Article>(
+            items: filteredArticles,
+            emptyMessage: 'Статьи не найдены',
+            childAspectRatio: 0.65,
+            itemBuilder: (article) {
+              final isUserAdded = userData.articles.any(
+                (e) => e.id == article.id,
+              );
+              final imageUrl = article.image.isNotEmpty
+                  ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
+                  : "";
+              return ItemCard(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ContentDetailScreen(
+                        item: article,
+                        pageTitle: 'Статья',
+                        shareEmoji: '📄',
+                        canDelete: _isLoggedIn && isUserAdded,
+                        onDelete: () => _deleteContent(article, true),
                       ),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.65,
-                          ),
-                      itemCount: filteredArticles.length,
-                      itemBuilder: (context, index) {
-                        final article = filteredArticles[index];
-                        final isUserAdded = userData.articles.any(
-                          (e) => e.id == article.id,
-                        );
-                        final imageUrl = article.image.isNotEmpty
-                            ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
-                            : "";
-                        return ItemCard(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ContentDetailScreen(
-                                  item: article,
-                                  pageTitle: 'Статья',
-                                  shareEmoji: '📄',
-                                  canDelete: _isLoggedIn && isUserAdded,
-                                  onDelete: () => _deleteContent(article, true),
-                                ),
-                              ),
-                            );
-                          },
-                          imageUrl: imageUrl,
-                          placeholderIcon: Icons.article,
-                          title: article.title,
-                          description: article.content,
-                        );
-                      },
                     ),
-            ),
+                  );
+                },
+                imageUrl: imageUrl,
+                placeholderIcon: Icons.article,
+                title: article.title,
+                description: article.content,
+              );
+            },
           ),
         ],
       );
@@ -875,72 +853,38 @@ class _HomeScreenState extends State<HomeScreen> {
       return Column(
         children: [
           _buildSearchBar('Поиск отзывов...'),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadData,
-              child: filteredReviews.isEmpty
-                  ? ListView(
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.all(32.0),
-                          child: Center(
-                            child: Text(
-                              'Отзывы не найдены',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        top: 16,
-                        bottom: 120,
+          _buildGrid<Article>(
+            items: filteredReviews,
+            emptyMessage: 'Отзывы не найдены',
+            childAspectRatio: 0.65,
+            itemBuilder: (review) {
+              final isUserAdded = userData.reviews.any(
+                (e) => e.id == review.id,
+              );
+              final imageUrl = review.image.isNotEmpty
+                  ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
+                  : "";
+              return ItemCard(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ContentDetailScreen(
+                        item: review,
+                        pageTitle: 'Отзыв',
+                        shareEmoji: '💬',
+                        canDelete: _isLoggedIn && isUserAdded,
+                        onDelete: () => _deleteContent(review, false),
                       ),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.65,
-                          ),
-                      itemCount: filteredReviews.length,
-                      itemBuilder: (context, index) {
-                        final review = filteredReviews[index];
-                        final isUserAdded = userData.reviews.any(
-                          (e) => e.id == review.id,
-                        );
-                        final imageUrl = review.image.isNotEmpty
-                            ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
-                            : "";
-                        return ItemCard(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ContentDetailScreen(
-                                  item: review,
-                                  pageTitle: 'Отзыв',
-                                  shareEmoji: '💬',
-                                  canDelete: _isLoggedIn && isUserAdded,
-                                  onDelete: () => _deleteContent(review, false),
-                                ),
-                              ),
-                            );
-                          },
-                          imageUrl: imageUrl,
-                          placeholderIcon: Icons.rate_review,
-                          title: review.title,
-                          description: review.content,
-                        );
-                      },
                     ),
-            ),
+                  );
+                },
+                imageUrl: imageUrl,
+                placeholderIcon: Icons.rate_review,
+                title: review.title,
+                description: review.content,
+              );
+            },
           ),
         ],
       );
@@ -1626,1166 +1570,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _searchQuery = value;
           });
         },
-      ),
-    );
-  }
-}
-
-// --- Экран детализации товара ---
-class ProductDetailScreen extends StatelessWidget {
-  final Product product;
-  final List<Product> allProducts;
-  final void Function(int) onAddToCart;
-
-  const ProductDetailScreen({
-    super.key,
-    required this.product,
-    required this.allProducts,
-    required this.onAddToCart,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final similarProducts = allProducts
-        .where((p) => p.category == product.category && p.id != product.id)
-        .toList();
-
-    final imageUrl =
-        "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}";
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          product.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () async {
-              final shareText =
-                  '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}';
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Загрузка фото для отправки...'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-              try {
-                final response = await http.get(Uri.parse(imageUrl));
-                final tempDir = await getTemporaryDirectory();
-                final file = await File(
-                  '${tempDir.path}/share_${product.image}',
-                ).create();
-                await file.writeAsBytes(response.bodyBytes);
-                await Share.shareXFiles([XFile(file.path)], text: shareText);
-              } catch (e) {
-                Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
-              }
-            },
-          ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 4,
-            ),
-            icon: const Icon(Icons.shopping_cart),
-            label: const Text(
-              'В корзину',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            onPressed: () => onAddToCart(product.id),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CachedNetworkImage(
-              imageUrl: imageUrl,
-              width: double.infinity,
-              height: 350,
-              fit: BoxFit.cover, // Растягиваем фото от края до края
-              placeholder: (context, url) => const SizedBox(
-                height: 350,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (context, url, error) => const SizedBox(
-                height: 350,
-                child: Icon(Icons.broken_image, size: 100),
-              ),
-            ),
-            Container(
-              transform: Matrix4.translationValues(0, -20, 0),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Text(
-                            product.name,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Center(
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'Цена: ${product.price} ₽',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'Баллы: ${product.points}',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Описание товара',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          product.description,
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 1.6,
-                            color: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.color,
-                          ),
-                        ),
-                        if (similarProducts.isNotEmpty) ...[
-                          const SizedBox(height: 32),
-                          const Text(
-                            'Похожие товары',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (similarProducts.isNotEmpty)
-                    SizedBox(
-                      height: 250,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        itemCount: similarProducts.length,
-                        itemBuilder: (context, index) {
-                          final similar = similarProducts[index];
-                          final simImageUrl =
-                              "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${similar.image}";
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProductDetailScreen(
-                                    product: similar,
-                                    allProducts: allProducts,
-                                    onAddToCart: onAddToCart,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 160,
-                              margin: const EdgeInsets.only(
-                                right: 16,
-                                bottom: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.grey.shade300,
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(16),
-                                    ),
-                                    child: CachedNetworkImage(
-                                      imageUrl: simImageUrl,
-                                      height: 140,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) =>
-                                          const SizedBox(
-                                            height: 140,
-                                            child: Center(
-                                              child:
-                                                  CircularProgressIndicator(),
-                                            ),
-                                          ),
-                                      errorWidget: (context, url, error) =>
-                                          const SizedBox(
-                                            height: 140,
-                                            child: Icon(Icons.broken_image),
-                                          ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            similar.name,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13,
-                                              height: 1.2,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${similar.price} ₽',
-                                            style: const TextStyle(
-                                              color: Colors.blue,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- Универсальный экран детализации (для статей и отзывов) ---
-class ContentDetailScreen extends StatelessWidget {
-  final Article item;
-  final String pageTitle;
-  final String shareEmoji;
-  final bool canDelete;
-  final VoidCallback? onDelete;
-
-  const ContentDetailScreen({
-    super.key,
-    required this.item,
-    required this.pageTitle,
-    required this.shareEmoji,
-    this.canDelete = false,
-    this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = item.image.isNotEmpty
-        ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${item.image}"
-        : "";
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          pageTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          if (canDelete)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Удаление'),
-                    content: const Text(
-                      'Вы уверены, что хотите удалить эту запись?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Отмена'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(ctx); // Закрываем диалог
-                          Navigator.pop(context); // Закрываем экран статьи
-                          if (onDelete != null) onDelete!();
-                        },
-                        child: const Text(
-                          'Удалить',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () async {
-              final shareText = '$shareEmoji ${item.title}\n\n${item.content}';
-
-              if (imageUrl.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Загрузка фото для отправки...'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-                try {
-                  final response = await http.get(Uri.parse(imageUrl));
-                  final tempDir = await getTemporaryDirectory();
-                  final file = await File(
-                    '${tempDir.path}/share_${item.image}',
-                  ).create();
-                  await file.writeAsBytes(response.bodyBytes);
-                  await Share.shareXFiles([XFile(file.path)], text: shareText);
-                } catch (e) {
-                  Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
-                }
-              } else {
-                Share.share(shareText);
-              }
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (item.image.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: double.infinity,
-                height: 350,
-                fit: BoxFit.cover, // Растягиваем на весь экран
-                placeholder: (context, url) => const SizedBox(
-                  height: 350,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const SizedBox(
-                  height: 350,
-                  child: Icon(Icons.broken_image, size: 100),
-                ),
-              ),
-            Container(
-              transform: item.image.isNotEmpty
-                  ? Matrix4.translationValues(0, -20, 0)
-                  : null,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).scaffoldBackgroundColor, // Цвет фона как у товаров
-                borderRadius: item.image.isNotEmpty
-                    ? const BorderRadius.vertical(top: Radius.circular(24))
-                    : null,
-              ),
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Text(
-                      item.title,
-                      textAlign: TextAlign.center, // Заголовок по центру
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    item.content,
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: Theme.of(context).textTheme.bodyMedium?.color,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- Универсальный виджет карточки (Товар, Статья, Отзыв) ---
-class ItemCard extends StatelessWidget {
-  final VoidCallback onTap;
-  final String imageUrl;
-  final IconData placeholderIcon;
-  final String title;
-  final String description;
-  final String? priceText;
-  final String? pointsText;
-  final int? cartQuantity;
-  final VoidCallback? onIncrement;
-  final VoidCallback? onDecrement;
-
-  const ItemCard({
-    super.key,
-    required this.onTap,
-    required this.imageUrl,
-    required this.placeholderIcon,
-    required this.title,
-    required this.description,
-    this.priceText,
-    this.pointsText,
-    this.cartQuantity,
-    this.onIncrement,
-    this.onDecrement,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade300, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-              child: imageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      height: 160,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => const SizedBox(
-                        height: 160,
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => const SizedBox(
-                        height: 160,
-                        child: Icon(Icons.broken_image, size: 50),
-                      ),
-                    )
-                  : SizedBox(
-                      height: 160,
-                      width: double.infinity,
-                      child: Icon(
-                        placeholderIcon,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Center(
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                    if (priceText != null || pointsText != null) ...[
-                      const SizedBox(height: 10),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: Row(
-                          children: [
-                            if (priceText != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  priceText!,
-                                  style: const TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            if (priceText != null && pointsText != null)
-                              const SizedBox(width: 6),
-                            if (pointsText != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  pointsText!,
-                                  style: TextStyle(
-                                    color: Colors.orange.shade800,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ] else ...[
-                      const SizedBox(height: 8),
-                    ],
-                    Expanded(
-                      child: Text(
-                        description,
-                        textAlign: TextAlign.center,
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                          height: 1.3,
-                        ),
-                      ),
-                    ),
-                    if (cartQuantity != null) ...[
-                      const SizedBox(height: 8),
-                      cartQuantity! > 0
-                          ? Container(
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.remove,
-                                      size: 18,
-                                      color: Colors.blue,
-                                    ),
-                                    onPressed: onDecrement,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 36,
-                                      minHeight: 36,
-                                    ),
-                                  ),
-                                  Text(
-                                    '$cartQuantity',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.add,
-                                      size: 18,
-                                      color: Colors.blue,
-                                    ),
-                                    onPressed: onIncrement,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 36,
-                                      minHeight: 36,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : SizedBox(
-                              height: 36,
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.zero,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                ),
-                                onPressed: onIncrement,
-                                child: const Text(
-                                  'В корзину',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                              ),
-                            ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- Экран списка накладных ---
-class InvoicesScreen extends StatefulWidget {
-  final AppData appData;
-  final Function(Map<String, dynamic>) onEditInvoice;
-
-  const InvoicesScreen({
-    super.key,
-    required this.appData,
-    required this.onEditInvoice,
-  });
-
-  @override
-  State<InvoicesScreen> createState() => _InvoicesScreenState();
-}
-
-class _InvoicesScreenState extends State<InvoicesScreen> {
-  List<dynamic> _invoices = [];
-  String _searchQuery = '';
-  final BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
-
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadInvoices();
-  }
-
-  Future<void> _loadInvoices() async {
-    final prefs = await SharedPreferences.getInstance();
-    final str = prefs.getString('saved_invoices') ?? '[]';
-    setState(() {
-      _invoices = jsonDecode(str);
-    });
-  }
-
-  Future<void> _saveInvoices() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_invoices', jsonEncode(_invoices));
-  }
-
-  void _deleteInvoice(int index) {
-    setState(() {
-      _invoices.removeAt(index);
-    });
-    _saveInvoices();
-  }
-
-  void _printInvoice(Map<String, dynamic> invoiceData) async {
-    List<BluetoothDevice> devices = [];
-    try {
-      devices = await bluetooth.getBondedDevices();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка получения Bluetooth устройств: $e')),
-      );
-      return;
-    }
-
-    BluetoothDevice? selectedDevice;
-
-    if (devices.isNotEmpty) {
-      selectedDevice = await showDialog<BluetoothDevice>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Выберите принтер'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: devices.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  leading: const Icon(Icons.print),
-                  title: Text(devices[index].name ?? 'Неизвестное устройство'),
-                  subtitle: Text(devices[index].address ?? ''),
-                  onTap: () {
-                    if (!mounted) return;
-                    Navigator.pop(context, devices[index]);
-                  },
-                );
-              },
-            ),
-          ),
-        ),
-      );
-    } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Нет сопряженных Bluetooth принтеров')),
-      );
-      return;
-    }
-
-    if (selectedDevice == null) return; // User cancelled
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Подключение к ${selectedDevice.name}...')),
-    );
-
-    await bluetooth.connect(selectedDevice);
-
-    final isConnected = await bluetooth.isConnected ?? false;
-
-    if (isConnected) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Печать...')));
-
-      // --- Formatting and Printing ---
-      final dateStr = invoiceData['date'] as String;
-      final date = DateTime.tryParse(dateStr) ?? DateTime.now();
-      final formattedDate =
-          "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-      final clientName = invoiceData['clientName'] as String? ?? '';
-      final items = invoiceData['items'] as Map<String, dynamic>;
-
-      bluetooth.printCustom("НАКЛАДНАЯ", 3, 1); // size 3, align center
-      bluetooth.printCustom("от $formattedDate", 1, 1);
-      if (clientName.isNotEmpty) {
-        bluetooth.printCustom("Клиент: $clientName", 1, 0);
-      }
-      bluetooth.printCustom("--------------------------------", 1, 1);
-      bluetooth.printLeftRight("Товар", "Сумма", 1);
-      bluetooth.printCustom("--------------------------------", 1, 1);
-
-      for (var e in items.entries) {
-        final pId = int.parse(e.key);
-        final q = e.value;
-        final p = widget.appData.products.firstWhere(
-          (p) => p.id == pId,
-          orElse: () => Product(
-            id: -1,
-            name: 'Неизвестно',
-            price: 0,
-            points: 0,
-            category: '',
-            description: '',
-            image: '',
-          ),
-        );
-        if (p.id != -1) {
-          bluetooth.printCustom(p.name, 1, 0);
-          bluetooth.printLeftRight("  x$q шт.", "${p.price * q} R", 1);
-        }
-      }
-
-      bluetooth.printCustom("--------------------------------", 1, 1);
-      bluetooth.printLeftRight("ИТОГО:", "${invoiceData['totalPrice']} R", 2);
-      bluetooth.printLeftRight("Баллы:", "${invoiceData['totalPoints']}", 1);
-      bluetooth.printNewLine();
-      bluetooth.printNewLine();
-      bluetooth.paperCut();
-    } else {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось подключиться к принтеру')),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filteredInvoices = _invoices.where((invoice) {
-      final clientName = (invoice['clientName'] as String? ?? '').toLowerCase();
-      final clientPhone = (invoice['clientPhone'] as String? ?? '')
-          .toLowerCase();
-      final query = _searchQuery.toLowerCase();
-      return clientName.contains(query) || clientPhone.contains(query);
-    }).toList();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Мои накладные')),
-      body: Column(
-        children: [
-          if (_invoices.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Поиск по имени или телефону...',
-                  prefixIcon: const Icon(Icons.search, color: Colors.blue),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-              ),
-            ),
-          Expanded(
-            child: filteredInvoices.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Накладные не найдены',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      top: 8,
-                      bottom: 16,
-                    ),
-                    itemCount: filteredInvoices.length,
-                    itemBuilder: (context, index) {
-                      final invoice = filteredInvoices[index];
-                      final originalIndex = _invoices.indexOf(
-                        invoice,
-                      ); // Ищем реальный индекс для удаления/редактирования
-                      final items = invoice['items'] as Map<String, dynamic>;
-                      final dateStr = invoice['date'] as String;
-                      final date = DateTime.tryParse(dateStr) ?? DateTime.now();
-                      final formattedDate =
-                          "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-                      final clientName = invoice['clientName'] as String? ?? '';
-                      final clientPhone =
-                          invoice['clientPhone'] as String? ?? '';
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Накладная от $formattedDate',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Сумма: ${invoice['totalPrice']} ₽ | Баллы: ${invoice['totalPoints']}',
-                                style: const TextStyle(
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (clientName.isNotEmpty ||
-                                  clientPhone.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Клиент: $clientName ${clientPhone.isNotEmpty ? '($clientPhone)' : ''}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Товары:',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              ...items.entries.map((e) {
-                                final pId = int.parse(e.key);
-                                final q = e.value;
-                                final p = widget.appData.products.firstWhere(
-                                  (p) => p.id == pId,
-                                  orElse: () => Product(
-                                    id: -1,
-                                    name: 'Неизвестно',
-                                    description: '',
-                                    image: '',
-                                    price: 0,
-                                    points: 0,
-                                    category: '',
-                                  ),
-                                );
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 4.0),
-                                  child: Text('- ${p.name} (x$q)'),
-                                );
-                              }),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  TextButton.icon(
-                                    icon: const Icon(
-                                      Icons.share,
-                                      color: Colors.green,
-                                    ),
-                                    label: const Text(
-                                      'Поделиться',
-                                      style: TextStyle(color: Colors.green),
-                                    ),
-                                    onPressed: () {
-                                      String shareText =
-                                          'Здравствуйте! Направляю детали заказа:\n\n📄 Накладная от $formattedDate\n';
-                                      if (clientName.isNotEmpty) {
-                                        shareText += '👤 Клиент: $clientName\n';
-                                      }
-                                      if (clientPhone.isNotEmpty) {
-                                        shareText +=
-                                            '📞 Телефон: $clientPhone\n';
-                                      }
-                                      shareText += '\n📋 Список товаров:\n';
-                                      int itemIndex = 1;
-                                      for (var e in items.entries) {
-                                        final pId = int.parse(e.key);
-                                        final q = e.value;
-                                        final p = widget.appData.products
-                                            .firstWhere(
-                                              (p) => p.id == pId,
-                                              orElse: () => Product(
-                                                id: -1,
-                                                name: 'Неизвестно',
-                                                description: '',
-                                                image: '',
-                                                price: 0,
-                                                points: 0,
-                                                category: '',
-                                              ),
-                                            );
-                                        if (p.id != -1) {
-                                          shareText +=
-                                              '$itemIndex. ${p.name} — $q шт. (${p.price * q} ₽)\n';
-                                          itemIndex++;
-                                        }
-                                      }
-                                      shareText +=
-                                          '\n💰 Итого к оплате: ${invoice['totalPrice']} ₽\n⭐ Начислено баллов: ${invoice['totalPoints']}';
-                                      Share.share(shareText);
-                                    },
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.print,
-                                          color: Colors.deepPurple,
-                                        ),
-                                        tooltip: 'Распечатать',
-                                        onPressed: () => _printInvoice(invoice),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.edit,
-                                          color: Colors.blue,
-                                        ),
-                                        tooltip: 'Изменить',
-                                        onPressed: () {
-                                          final itemsToEdit = items;
-                                          _deleteInvoice(originalIndex);
-                                          if (!mounted) return;
-                                          Navigator.pop(context);
-                                          widget.onEditInvoice(itemsToEdit);
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          color: Colors.red,
-                                        ),
-                                        tooltip: 'Удалить',
-                                        onPressed: () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (ctx) => AlertDialog(
-                                              title: const Text('Удаление'),
-                                              content: const Text(
-                                                'Удалить эту накладную?',
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(ctx),
-                                                  child: const Text('Отмена'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    if (!mounted) return;
-                                                    Navigator.pop(ctx);
-                                                    _deleteInvoice(
-                                                      originalIndex,
-                                                    );
-                                                  },
-                                                  child: const Text(
-                                                    'Удалить',
-                                                    style: TextStyle(
-                                                      color: Colors.red,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
       ),
     );
   }
