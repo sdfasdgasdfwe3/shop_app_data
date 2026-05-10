@@ -236,7 +236,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     ),
                                     onPressed: () {
                                       String shareText =
-                                          '📦 Ваш заказ успешно оформлен!\n📄 Накладная от $formattedDate\n\n';
+                                          ' Накладная от $formattedDate\n\n';
                                       if (clientName.isNotEmpty) {
                                         shareText += '👤 Клиент: $clientName\n';
                                       }
@@ -244,7 +244,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                         shareText +=
                                             '📞 Телефон: $clientPhone\n';
                                       }
-                                      shareText += '\n🛒 Список товаров:\n';
+                                      shareText += '\n🛒 СПИСОК ТОВАРОВ:\n\n';
+                                      int itemIndex = 1;
                                       for (var e in items.entries) {
                                         final pId = int.parse(e.key);
                                         final q = e.value as int;
@@ -285,22 +286,26 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                               ),
                                             );
                                         if (p.id != -1) {
+                                          shareText +=
+                                              '$itemIndex. ${p.name}\n';
                                           if (giftQ == q) {
                                             shareText +=
-                                                '▫️ ${p.name} — $q шт. (В подарок)\n';
+                                                '   🎁 $q шт. (В подарок)\n\n';
                                           } else if (giftQ > 0) {
                                             shareText +=
-                                                '▫️ ${p.name} — $paidQ шт. x ${p.price} ₽ = ${p.price * paidQ} ₽\n';
+                                                '   ➖ $paidQ шт. x ${p.price} ₽ = ${p.price * paidQ} ₽\n';
                                             shareText +=
-                                                '     + $giftQ шт. (В подарок)\n';
+                                                '   🎁 $giftQ шт. (В подарок)\n\n';
                                           } else {
                                             shareText +=
-                                                '▫️ ${p.name} — $q шт. x ${p.price} ₽ = ${p.price * q} ₽\n';
+                                                '   ➖ $q шт. x ${p.price} ₽ = ${p.price * q} ₽\n\n';
                                           }
+                                          itemIndex++;
                                         }
                                       }
+                                      shareText += '➖➖➖➖➖➖➖➖➖➖\n';
                                       shareText +=
-                                          '\n💰 Итого к оплате: ${invoice['totalPrice']} ₽\n';
+                                          '💰 ИТОГО К ОПЛАТЕ: ${invoice['totalPrice']} ₽\n';
                                       shareText +=
                                           '⭐️ Итого баллов: ${invoice['totalPoints']}';
                                       Share.share(shareText);

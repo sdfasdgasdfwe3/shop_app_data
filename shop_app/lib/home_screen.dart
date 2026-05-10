@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, int> _cart = {}; // Хранение корзины: id товара -> количество
   Map<String, int> _giftItems =
       {}; // Хранение подарочных товаров (id -> количество)
-  final int _currentAppVersion = 16; // Текущая версия этого приложения
+  final int _currentAppVersion = 17; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -171,13 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final key = productId.toString();
       if ((_cart[key] ?? 0) > 1) {
         _cart[key] = _cart[key]! - 1;
-        if ((_giftItems[key] ?? 0) > _cart[key]!) {
-          _giftItems[key] =
-              _cart[key]!; // Уменьшаем подарки, если общее кол-во стало меньше
-        }
       } else {
         _cart.remove(key);
-        _giftItems.remove(key); // Удаляем из подарков, если товара больше нет
       }
     });
     _saveCart();
@@ -189,15 +184,21 @@ class _HomeScreenState extends State<HomeScreen> {
     String clientName,
     String clientPhone,
   ) async {
-    if (_cart.isEmpty) return;
+    if (_cart.isEmpty && _giftItems.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     final invoicesStr = prefs.getString('saved_invoices') ?? '[]';
     List<dynamic> invoices = jsonDecode(invoicesStr);
 
+    Map<String, int> invoiceItems = {};
+    Set<String> allKeys = {..._cart.keys, ..._giftItems.keys};
+    for (var k in allKeys) {
+      invoiceItems[k] = (_cart[k] ?? 0) + (_giftItems[k] ?? 0);
+    }
+
     final newInvoice = {
       'id': DateTime.now().millisecondsSinceEpoch.toString(),
       'date': DateTime.now().toIso8601String(),
-      'items': Map<String, int>.from(_cart),
+      'items': invoiceItems,
       'giftItems': Map<String, int>.from(_giftItems),
       'totalPrice': totalPrice,
       'totalPoints': totalPoints,
@@ -266,6 +267,60 @@ class _HomeScreenState extends State<HomeScreen> {
                 nameController.text.trim(),
                 phoneController.text.trim(),
               );
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showQuantityDialog(String key, bool isGift, int currentQty) {
+    final controller = TextEditingController(text: currentQty.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          isGift ? 'Количество в подарок' : 'Оплачиваемое количество',
+        ),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Введите количество',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              final val = int.tryParse(controller.text) ?? 0;
+              setState(() {
+                if (isGift) {
+                  if (val > 0) {
+                    _giftItems[key] = val;
+                  } else {
+                    _giftItems.remove(key);
+                  }
+                } else {
+                  if (val > 0) {
+                    _cart[key] = val;
+                  } else {
+                    _cart.remove(key);
+                  }
+                }
+              });
+              _saveCart();
+              Navigator.pop(ctx);
             },
             child: const Text('Сохранить'),
           ),
@@ -471,7 +526,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    int totalCartItems = _cart.values.fold(0, (sum, item) => sum + item);
+    int totalCartItems =
+        _cart.values.fold(0, (sum, item) => sum + item) +
+        _giftItems.values.fold(0, (sum, item) => sum + item);
 
     return Scaffold(
       appBar: AppBar(
@@ -871,7 +928,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCartScreen() {
-    if (_cart.isEmpty) {
+    if (_cart.isEmpty && _giftItems.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -899,16 +956,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       appData: appData,
                       onEditInvoice: (items, giftItems) {
                         setState(() {
-                          _cart = Map<String, int>.from(
-                            items.map(
-                              (k, v) => MapEntry(k.toString(), v as int),
-                            ),
-                          );
                           _giftItems = Map<String, int>.from(
                             giftItems.map(
                               (k, v) => MapEntry(k.toString(), v as int),
                             ),
                           );
+                          _cart = {};
+                          for (var entry in items.entries) {
+                            int total = entry.value as int;
+                            int gift = _giftItems[entry.key] ?? 0;
+                            int paid = total - gift;
+                            if (paid > 0) {
+                              _cart[entry.key] = paid;
+                            }
+                          }
                         });
                         _saveCart();
                       },
@@ -926,15 +987,12 @@ class _HomeScreenState extends State<HomeScreen> {
     int totalPoints = 0;
     List<Widget> cartItems = [];
 
-    for (var entry in _cart.entries) {
-      final productId = int.parse(entry.key);
-      final quantity = entry.value;
-      int giftQty = _giftItems[entry.key] ?? 0;
-      if (giftQty > quantity) {
-        giftQty = quantity;
-        _giftItems[entry.key] = quantity;
-      }
-      final paidQty = quantity - giftQty;
+    Set<String> allKeys = {..._cart.keys, ..._giftItems.keys};
+
+    for (var key in allKeys) {
+      final productId = int.parse(key);
+      final paidQty = _cart[key] ?? 0;
+      final giftQty = _giftItems[key] ?? 0;
       final product = appData.products.firstWhere(
         (p) => p.id == productId,
         orElse: () => Product(
@@ -989,28 +1047,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          giftQty == quantity
-                              ? 'В подарок ($quantity шт. - 0 ₽)'
-                              : giftQty > 0
-                              ? '${product.price} ₽ x $paidQty = ${product.price * paidQty} ₽\nВ подарок: $giftQty шт.'
-                              : '${product.price} ₽ x $quantity = ${product.price * quantity} ₽',
-                          style: TextStyle(
-                            color: giftQty > 0 ? Colors.green : Colors.blue,
+                          '${product.price} ₽ x $paidQty = ${product.price * paidQty} ₽',
+                          style: const TextStyle(
+                            color: Colors.blue,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             InkWell(
                               onTap: () {
                                 setState(() {
                                   if (giftQty > 0) {
-                                    _giftItems.remove(entry.key);
+                                    _giftItems.remove(key);
                                   } else {
-                                    _giftItems[entry.key] = 1;
+                                    _giftItems[key] = 1;
                                   }
                                 });
                                 _saveCart();
@@ -1038,12 +1092,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             if (giftQty > 0) ...[
-                              const SizedBox(width: 8),
+                              const SizedBox(height: 6),
                               Container(
-                                height: 24,
+                                height: 36,
                                 decoration: BoxDecoration(
                                   color: Colors.green.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -1051,46 +1105,65 @@ class _HomeScreenState extends State<HomeScreen> {
                                     IconButton(
                                       icon: const Icon(
                                         Icons.remove,
-                                        size: 14,
+                                        size: 18,
                                         color: Colors.green,
                                       ),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(
-                                        minWidth: 24,
-                                        minHeight: 24,
+                                        minWidth: 36,
+                                        minHeight: 36,
                                       ),
                                       onPressed: () => setState(() {
                                         if (giftQty > 1) {
-                                          _giftItems[entry.key] = giftQty - 1;
+                                          _giftItems[key] = giftQty - 1;
                                         } else {
-                                          _giftItems.remove(entry.key);
+                                          _giftItems.remove(key);
                                         }
                                         _saveCart();
                                       }),
                                     ),
-                                    Text(
-                                      '$giftQty',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green,
+                                    GestureDetector(
+                                      onTap: () => _showQuantityDialog(
+                                        key,
+                                        true,
+                                        giftQty,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '$giftQty',
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                     IconButton(
                                       icon: const Icon(
                                         Icons.add,
-                                        size: 14,
+                                        size: 18,
                                         color: Colors.green,
                                       ),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(
-                                        minWidth: 24,
-                                        minHeight: 24,
+                                        minWidth: 36,
+                                        minHeight: 36,
                                       ),
                                       onPressed: () => setState(() {
-                                        if (giftQty < quantity) {
-                                          _giftItems[entry.key] = giftQty + 1;
-                                        }
+                                        _giftItems[key] = giftQty + 1;
                                         _saveCart();
                                       }),
                                     ),
@@ -1107,30 +1180,42 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.remove_circle_outline,
-                          color: Colors.red,
+                          color: paidQty > 0 ? Colors.red : Colors.grey,
                         ),
-                        onPressed: () {
-                          setState(() {
-                            if (quantity > 1) {
-                              _cart[entry.key] = quantity - 1;
-                              if (giftQty > quantity - 1) {
-                                _giftItems[entry.key] = quantity - 1;
+                        onPressed: paidQty > 0
+                            ? () {
+                                setState(() {
+                                  if (paidQty > 1) {
+                                    _cart[key] = paidQty - 1;
+                                  } else {
+                                    _cart.remove(key);
+                                  }
+                                });
+                                _saveCart();
                               }
-                            } else {
-                              _cart.remove(entry.key);
-                              _giftItems.remove(entry.key);
-                            }
-                          });
-                          _saveCart();
-                        },
+                            : null,
                       ),
-                      Text(
-                        '$quantity',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      GestureDetector(
+                        onTap: () => _showQuantityDialog(key, false, paidQty),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$paidQty',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.blue,
+                            ),
+                          ),
                         ),
                       ),
                       IconButton(
@@ -1140,7 +1225,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _cart[entry.key] = quantity + 1;
+                            _cart[key] = paidQty + 1;
                           });
                           _saveCart();
                         },
