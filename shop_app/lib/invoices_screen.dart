@@ -7,7 +7,7 @@ import '../models.dart';
 // --- Экран списка накладных ---
 class InvoicesScreen extends StatefulWidget {
   final AppData appData;
-  final Function(Map<String, dynamic>) onEditInvoice;
+  final Function(Map<String, dynamic>, Map<String, dynamic>) onEditInvoice;
 
   const InvoicesScreen({
     super.key,
@@ -172,7 +172,26 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                               const SizedBox(height: 4),
                               ...items.entries.map((e) {
                                 final pId = int.parse(e.key);
-                                final q = e.value;
+                                final q = e.value as int;
+
+                                var rawGiftItems = invoice['giftItems'];
+                                Map<String, int> giftItemsMap = {};
+                                if (rawGiftItems is List) {
+                                  for (var id in rawGiftItems) {
+                                    giftItemsMap[id.toString()] =
+                                        (items[id.toString()] as int?) ?? 0;
+                                  }
+                                } else if (rawGiftItems is Map) {
+                                  giftItemsMap = Map<String, int>.from(
+                                    rawGiftItems.map(
+                                      (k, v) =>
+                                          MapEntry(k.toString(), v as int),
+                                    ),
+                                  );
+                                }
+                                int giftQ = giftItemsMap[e.key] ?? 0;
+                                int paidQ = q - giftQ;
+
                                 final p = widget.appData.products.firstWhere(
                                   (p) => p.id == pId,
                                   orElse: () => Product(
@@ -185,9 +204,20 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     category: '',
                                   ),
                                 );
+
+                                String text;
+                                if (giftQ == q) {
+                                  text = '- ${p.name} (x$q) [В ПОДАРОК]';
+                                } else if (giftQ > 0) {
+                                  text =
+                                      '- ${p.name} (x$paidQ + $giftQ в подарок)';
+                                } else {
+                                  text = '- ${p.name} (x$q)';
+                                }
+
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 4.0),
-                                  child: Text('- ${p.name} (x$q)'),
+                                  child: Text(text),
                                 );
                               }),
                               const SizedBox(height: 16),
@@ -217,7 +247,30 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                       shareText += '\n🛒 Список товаров:\n';
                                       for (var e in items.entries) {
                                         final pId = int.parse(e.key);
-                                        final q = e.value;
+                                        final q = e.value as int;
+
+                                        var rawGiftItems = invoice['giftItems'];
+                                        Map<String, int> giftItemsMap = {};
+                                        if (rawGiftItems is List) {
+                                          for (var id in rawGiftItems) {
+                                            giftItemsMap[id.toString()] =
+                                                (items[id.toString()]
+                                                    as int?) ??
+                                                0;
+                                          }
+                                        } else if (rawGiftItems is Map) {
+                                          giftItemsMap = Map<String, int>.from(
+                                            rawGiftItems.map(
+                                              (k, v) => MapEntry(
+                                                k.toString(),
+                                                v as int,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        int giftQ = giftItemsMap[e.key] ?? 0;
+                                        int paidQ = q - giftQ;
+
                                         final p = widget.appData.products
                                             .firstWhere(
                                               (p) => p.id == pId,
@@ -232,15 +285,24 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                               ),
                                             );
                                         if (p.id != -1) {
-                                          shareText +=
-                                              '▫️ ${p.name} — $q шт. x ${p.price} ₽ = ${p.price * q} ₽\n';
+                                          if (giftQ == q) {
+                                            shareText +=
+                                                '▫️ ${p.name} — $q шт. (В подарок)\n';
+                                          } else if (giftQ > 0) {
+                                            shareText +=
+                                                '▫️ ${p.name} — $paidQ шт. x ${p.price} ₽ = ${p.price * paidQ} ₽\n';
+                                            shareText +=
+                                                '     + $giftQ шт. (В подарок)\n';
+                                          } else {
+                                            shareText +=
+                                                '▫️ ${p.name} — $q шт. x ${p.price} ₽ = ${p.price * q} ₽\n';
+                                          }
                                         }
                                       }
                                       shareText +=
                                           '\n💰 Итого к оплате: ${invoice['totalPrice']} ₽\n';
                                       shareText +=
-                                          '⭐️ Начислено баллов: ${invoice['totalPoints']}\n\n';
-                                      shareText += 'Благодарим за покупку! 💙';
+                                          '⭐️ Итого баллов: ${invoice['totalPoints']}';
                                       Share.share(shareText);
                                     },
                                   ),
@@ -255,9 +317,28 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                         tooltip: 'Изменить',
                                         onPressed: () {
                                           final itemsToEdit = items;
+                                          var rawGiftItems =
+                                              invoice['giftItems'];
+                                          Map<String, dynamic> giftItemsToEdit =
+                                              {};
+                                          if (rawGiftItems is List) {
+                                            for (var id in rawGiftItems) {
+                                              giftItemsToEdit[id.toString()] =
+                                                  items[id.toString()] ?? 0;
+                                            }
+                                          } else if (rawGiftItems is Map) {
+                                            giftItemsToEdit =
+                                                Map<String, dynamic>.from(
+                                                  rawGiftItems,
+                                                );
+                                          }
+
                                           _deleteInvoice(originalIndex);
                                           Navigator.pop(context);
-                                          widget.onEditInvoice(itemsToEdit);
+                                          widget.onEditInvoice(
+                                            itemsToEdit,
+                                            giftItemsToEdit,
+                                          );
                                         },
                                       ),
                                       IconButton(
