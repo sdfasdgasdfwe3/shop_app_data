@@ -189,9 +189,9 @@ class DataManager {
         },
       );
 
-      int currentVersion = 1;
+      int currentUserVersion = 1;
       String? versionSha;
-      Map<String, dynamic> vData = {"version": 1};
+      Map<String, dynamic> vData = {"data_version": 1, "user_data_version": 1};
 
       if (versionGet.statusCode == 200) {
         final vJson = jsonDecode(versionGet.body);
@@ -200,11 +200,14 @@ class DataManager {
           base64Decode(vJson['content'].replaceAll('\n', '')),
         );
         vData = jsonDecode(decodedStr);
-        currentVersion = vData['version'] ?? 1;
+        currentUserVersion =
+            vData['user_data_version'] ?? vData['version'] ?? 1;
       }
 
-      // 4. Повышаем версию и отправляем
-      vData['version'] = currentVersion + 1;
+      // 4. Повышаем ТОЛЬКО пользовательскую версию (data_version остается неизменной)
+      vData['user_data_version'] = currentUserVersion + 1;
+      vData.remove('version'); // Убираем старый ключ, чтобы не путаться
+
       final vBase64 = base64Encode(
         utf8.encode(const JsonEncoder.withIndent('  ').convert(vData)),
       );
@@ -216,9 +219,10 @@ class DataManager {
           "Content-Type": "application/json",
         },
         body: jsonEncode({
-          "message": "Авто-повышение версии до ${currentVersion + 1}",
+          "message":
+              "Авто-повышение user_data_version до ${currentUserVersion + 1}",
           "content": vBase64,
-          "sha": ?versionSha,
+          "sha": versionSha,
         }),
       );
 
