@@ -59,57 +59,72 @@ class DataManager {
       );
       if (versionResponse.statusCode == 200) {
         final versionData = jsonDecode(versionResponse.body);
-        final remoteVersion = versionData['version'];
+
+        // Читаем разделенные версии данных (с fallback на старый ключ version, если он есть)
+        final remoteDataVersion =
+            versionData['data_version'] ?? versionData['version'] ?? 0;
+        final remoteUserDataVersion =
+            versionData['user_data_version'] ?? versionData['version'] ?? 0;
         remoteAppVersion = versionData['app_version'] ?? 1;
         appUpdateUrl = versionData['app_update_url'] ?? "";
 
         final prefs = await SharedPreferences.getInstance();
-        final localVersion = prefs.getInt('version') ?? 0;
+        final localDataVersion =
+            prefs.getInt('data_version') ?? prefs.getInt('version') ?? 0;
+        final localUserDataVersion =
+            prefs.getInt('user_data_version') ?? prefs.getInt('version') ?? 0;
 
-        if (remoteVersion > localVersion) {
+        bool isUpdated = false;
+
+        // 1. Проверяем и обновляем каталог товаров (data.json)
+        if (remoteDataVersion > localDataVersion) {
           final dataResponse = await http.get(
             Uri.parse('$repoUrl/data.json?t=$timestamp'),
           );
           if (dataResponse.statusCode == 200) {
             final directory = await getApplicationDocumentsDirectory();
             final file = File('${directory.path}/$fileName');
-
             await file.writeAsString(dataResponse.body);
-
-            // Также скачиваем user_data.json, если он существует
-            final userDataResponse = await http.get(
-              Uri.parse('$repoUrl/$userFileName?t=$timestamp'),
-            );
-            if (userDataResponse.statusCode == 200) {
-              try {
-                final remoteUserData = jsonDecode(userDataResponse.body);
-                final remoteArticles =
-                    remoteUserData['articles'] as List? ?? [];
-                final remoteReviews = remoteUserData['reviews'] as List? ?? [];
-
-                final localUserData = await getLocalUserData();
-
-                // Защита от случайного обнуления: если сервер прислал пустой файл, а локально есть данные,
-                // значит файл на GitHub был случайно затерт при обновлении. Не удаляем локальные данные!
-                if (remoteArticles.isEmpty &&
-                    remoteReviews.isEmpty &&
-                    (localUserData.articles.isNotEmpty ||
-                        localUserData.reviews.isNotEmpty)) {
-                  debugPrint(
-                    "Сервер прислал пустую базу. Локальные данные сохранены для безопасности.",
-                  );
-                } else {
-                  final userFile = File('${directory.path}/$userFileName');
-                  await userFile.writeAsString(userDataResponse.body);
-                }
-              } catch (e) {
-                debugPrint("Ошибка парсинга удаленного user_data.json: $e");
-              }
-            }
-            await prefs.setInt('version', remoteVersion);
-            return true;
+            await prefs.setInt('data_version', remoteDataVersion);
+            isUpdated = true;
           }
         }
+
+        // 2. Проверяем и обновляем отзывы/статьи пользователей (user_data.json)
+        if (remoteUserDataVersion > localUserDataVersion) {
+          final userDataResponse = await http.get(
+            Uri.parse('$repoUrl/$userFileName?t=$timestamp'),
+          );
+          if (userDataResponse.statusCode == 200) {
+            try {
+              final remoteUserData = jsonDecode(userDataResponse.body);
+              final remoteArticles = remoteUserData['articles'] as List? ?? [];
+              final remoteReviews = remoteUserData['reviews'] as List? ?? [];
+
+              final localUserData = await getLocalUserData();
+
+              // Защита от случайного обнуления: если сервер прислал пустой файл, не удаляем локальные данные
+              if (remoteArticles.isEmpty &&
+                  remoteReviews.isEmpty &&
+                  (localUserData.articles.isNotEmpty ||
+                      localUserData.reviews.isNotEmpty)) {
+                debugPrint(
+                  "Сервер прислал пустую базу. Локальные данные сохранены для безопасности.",
+                );
+              } else {
+                final directory = await getApplicationDocumentsDirectory();
+                final userFile = File('${directory.path}/$userFileName');
+                await userFile.writeAsString(userDataResponse.body);
+                await prefs.setInt('user_data_version', remoteUserDataVersion);
+                isUpdated = true;
+              }
+            } catch (e) {
+              debugPrint("Ошибка парсинга удаленного user_data.json: $e");
+            }
+          }
+        }
+
+        return isUpdated;
       }
     } catch (e) {
       debugPrint("Ошибка синхронизации (нет интернета): $e");
