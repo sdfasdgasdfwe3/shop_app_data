@@ -39,7 +39,8 @@ class ProductDetailScreen extends StatelessWidget {
             onPressed: () async {
               final shareText =
                   '📦 ${product.name}\n💰 Цена: ${product.price} ₽\n⭐ Баллы: ${product.points}\n\n📝 Описание:\n${product.description}';
-              ScaffoldMessenger.of(context).showSnackBar(
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.showSnackBar(
                 const SnackBar(
                   content: Text('Загрузка фото для отправки...'),
                   duration: Duration(seconds: 1),
@@ -47,12 +48,20 @@ class ProductDetailScreen extends StatelessWidget {
               );
               try {
                 final response = await http.get(Uri.parse(imageUrl));
-                final tempDir = await getTemporaryDirectory();
-                final file = await File(
-                  '${tempDir.path}/share_${product.image}',
-                ).create();
-                await file.writeAsBytes(response.bodyBytes);
-                await Share.shareXFiles([XFile(file.path)], text: shareText);
+                if (response.statusCode == 200) {
+                  final tempDir = await getTemporaryDirectory();
+                  final file = await File(
+                    '${tempDir.path}/share_${product.image}',
+                  ).create();
+                  await file.writeAsBytes(response.bodyBytes);
+
+                  if (!context.mounted) return;
+                  messenger.hideCurrentSnackBar();
+
+                  await Share.shareXFiles([XFile(file.path)], text: shareText);
+                } else {
+                  throw Exception('Failed to load image');
+                }
               } catch (e) {
                 Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
               }

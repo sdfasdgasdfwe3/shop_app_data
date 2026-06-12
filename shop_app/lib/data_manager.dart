@@ -189,7 +189,7 @@ class DataManager {
           "message":
               "Обновление user_data.json (добавлен контент из приложения)",
           "content": dataBase64,
-          "sha": ?dataSha,
+          "sha": dataSha,
         }),
       );
 
