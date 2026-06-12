@@ -16,6 +16,8 @@ class DataManager {
 
   int remoteAppVersion = 1;
   String appUpdateUrl = "";
+  int localDataVersion = 0; // Добавляем для отображения в UI
+  int localUserDataVersion = 0; // Добавляем для отображения в UI
 
   Future<AppData> getLocalData() async {
     try {
@@ -85,7 +87,10 @@ class DataManager {
             final directory = await getApplicationDocumentsDirectory();
             final file = File('${directory.path}/$fileName');
             await file.writeAsString(dataResponse.body);
-            await prefs.setInt('data_version', remoteDataVersion);
+            await prefs.setInt(
+              'data_version',
+              remoteDataVersion,
+            ); // Обновляем SharedPreferences
             isUpdated = true;
           }
         }
@@ -115,7 +120,10 @@ class DataManager {
                 final directory = await getApplicationDocumentsDirectory();
                 final userFile = File('${directory.path}/$userFileName');
                 await userFile.writeAsString(userDataResponse.body);
-                await prefs.setInt('user_data_version', remoteUserDataVersion);
+                await prefs.setInt(
+                  'user_data_version',
+                  remoteUserDataVersion,
+                ); // Обновляем SharedPreferences
                 isUpdated = true;
               }
             } catch (e) {
@@ -284,7 +292,7 @@ class DataManager {
         body: jsonEncode({
           "message": "Загрузка картинки $fileName",
           "content": base64String,
-          if (existingSha != null) "sha": existingSha,
+          "sha": ?existingSha,
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
