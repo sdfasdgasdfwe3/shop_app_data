@@ -62,15 +62,19 @@ class DataManager {
       if (versionResponse.statusCode == 200) {
         final versionData = jsonDecode(versionResponse.body);
 
-        // Читаем разделенные версии данных (с fallback на старый ключ version, если он есть)
-        final int remoteDataVersion = versionData['data_version'] ?? 0;
-        final int remoteUserDataVersion = versionData['user_data_version'] ?? 0;
+        // Читаем версии. Fallback на 'version' для совместимости с Admin Panel в браузере
+        final int remoteDataVersion =
+            versionData['data_version'] ?? versionData['version'] ?? 0;
+        final int remoteUserDataVersion =
+            versionData['user_data_version'] ?? versionData['version'] ?? 0;
         remoteAppVersion = versionData['app_version'] ?? 1;
         appUpdateUrl = versionData['app_update_url'] ?? "";
 
         final prefs = await SharedPreferences.getInstance();
-        final int localDataVersion = prefs.getInt('data_version') ?? 0;
-        final int localUserDataVersion = prefs.getInt('user_data_version') ?? 0;
+        localDataVersion =
+            prefs.getInt('data_version') ?? prefs.getInt('version') ?? 0;
+        localUserDataVersion =
+            prefs.getInt('user_data_version') ?? prefs.getInt('version') ?? 0;
 
         debugPrint(
           "Data sync check: Remote V$remoteDataVersion vs Local V$localDataVersion",
