@@ -1,8 +1,7 @@
 {
-  "data_version": 112,
-  "user_data_version": 110,
-  "last_updated": "2026-05-24",
+  "data_version": 105,
+  "user_data_version": 103,
+  "last_updated": "2026-06-13 12:00",
   "app_version": 17,
-  "app_update_url": "https://github.com/sdfasdgasdfwe3/shop_app_data/releases/download/17/app-release.apk",
-  "version": 2
+  "app_update_url": "https://github.com/sdfasdgasdfwe3/shop_app_data/releases/download/17/app-release.apk"
 }
