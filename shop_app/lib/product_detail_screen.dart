@@ -19,14 +19,16 @@ class ProductDetailScreen extends StatelessWidget {
     required this.onAddToCart,
   });
 
+  static const String _imageBaseUrl =
+      "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/";
+
   @override
   Widget build(BuildContext context) {
     final similarProducts = allProducts
         .where((p) => p.category == product.category && p.id != product.id)
         .toList();
 
-    final imageUrl =
-        "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}";
+    final imageUrl = "$_imageBaseUrl${product.image}";
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -225,8 +227,7 @@ class ProductDetailScreen extends StatelessWidget {
                         itemCount: similarProducts.length,
                         itemBuilder: (context, index) {
                           final similar = similarProducts[index];
-                          final simImageUrl =
-                              "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${similar.image}";
+                          final simImageUrl = "$_imageBaseUrl${similar.image}";
                           return GestureDetector(
                             onTap: () {
                               Navigator.push(

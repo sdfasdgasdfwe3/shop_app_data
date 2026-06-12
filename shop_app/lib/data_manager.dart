@@ -257,6 +257,20 @@ class DataManager {
         "https://api.github.com/repos/sdfasdgasdfwe3/shop_app_data/contents/images/$fileName";
 
     try {
+      // Check if the file already exists to get its SHA (required for updates)
+      final checkResponse = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/vnd.github.v3+json",
+        },
+      );
+
+      String? existingSha;
+      if (checkResponse.statusCode == 200) {
+        existingSha = jsonDecode(checkResponse.body)['sha'];
+      }
+
       final bytes = await imageFile.readAsBytes();
       final base64String = base64Encode(bytes);
 
@@ -270,6 +284,7 @@ class DataManager {
         body: jsonEncode({
           "message": "Загрузка картинки $fileName",
           "content": base64String,
+          if (existingSha != null) "sha": existingSha,
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {

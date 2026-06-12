@@ -1,6 +1,9 @@
 @echo off
 echo Starting GitHub synchronization...
 
+rem Cleanup any potentially stuck rebase processes from previous runs
+git rebase --abort >nul 2>&1
+
 rem Add all changed and new files
 git add .gitignore
 git add data.json
@@ -21,7 +24,8 @@ if %errorlevel% neq 0 (
 )
 
 rem Pull latest changes from GitHub to avoid conflicts
-git pull origin main --rebase
+rem -X theirs automatically resolves conflicts in favor of the remote branch
+git pull origin main --rebase -X theirs
 if %errorlevel% neq 0 (
     echo.
     echo Error: Failed to pull data from GitHub. Please resolve conflicts manually.
