@@ -801,8 +801,7 @@ class _HomeScreenState extends State<HomeScreen> {
             emptyMessage: 'Товары не найдены',
             childAspectRatio: 0.44,
             itemBuilder: (product) {
-              final imageUrl =
-                  "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}";
+              final imageUrl = "${dataManager.repoUrl}/images/${product.image}";
               return ItemCard(
                 onTap: () {
                   Navigator.push(
@@ -849,7 +848,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 (e) => e.id == article.id,
               );
               final imageUrl = article.image.isNotEmpty
-                  ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${article.image}"
+                  ? "${dataManager.repoUrl}/images/${article.image}"
                   : "";
               return ItemCard(
                 onTap: () {
@@ -894,7 +893,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 (e) => e.id == review.id,
               );
               final imageUrl = review.image.isNotEmpty
-                  ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${review.image}"
+                  ? "${dataManager.repoUrl}/images/${review.image}"
                   : "";
               return ItemCard(
                 onTap: () {
@@ -1023,7 +1022,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: CachedNetworkImage(
                       imageUrl:
-                          "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${product.image}",
+                          "${dataManager.repoUrl}/images/${product.image}",
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,
