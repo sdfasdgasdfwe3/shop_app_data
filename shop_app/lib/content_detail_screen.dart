@@ -75,7 +75,8 @@ class ContentDetailScreen extends StatelessWidget {
               final shareText = '$shareEmoji ${item.title}\n\n${item.content}';
 
               if (imageUrl.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                final messenger = ScaffoldMessenger.of(context);
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Загрузка фото для отправки...'),
                     duration: Duration(seconds: 1),
@@ -88,6 +89,10 @@ class ContentDetailScreen extends StatelessWidget {
                     '${tempDir.path}/share_${item.image}',
                   ).create();
                   await file.writeAsBytes(response.bodyBytes);
+
+                  if (!context.mounted) return;
+                  messenger.hideCurrentSnackBar();
+
                   await Share.shareXFiles([XFile(file.path)], text: shareText);
                 } catch (e) {
                   Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
