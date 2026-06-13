@@ -23,11 +23,12 @@ class ContentDetailScreen extends StatelessWidget {
     this.onDelete,
   });
 
+  static const String _imageBaseUrl =
+      "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/";
+
   @override
   Widget build(BuildContext context) {
-    final imageUrl = item.image.isNotEmpty
-        ? "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/${item.image}"
-        : "";
+    final imageUrl = item.image.isNotEmpty ? "$_imageBaseUrl${item.image}" : "";
 
     return Scaffold(
       appBar: AppBar(

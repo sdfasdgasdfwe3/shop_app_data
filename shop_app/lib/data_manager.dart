@@ -95,6 +95,8 @@ class DataManager {
               'data_version',
               remoteDataVersion,
             ); // Обновляем SharedPreferences
+            localDataVersion =
+                remoteDataVersion; // Обновляем текущее значение для UI
             isUpdated = true;
           }
         }
@@ -128,6 +130,8 @@ class DataManager {
                   'user_data_version',
                   remoteUserDataVersion,
                 ); // Обновляем SharedPreferences
+                localUserDataVersion =
+                    remoteUserDataVersion; // Обновляем для UI
                 isUpdated = true;
               }
             } catch (e) {

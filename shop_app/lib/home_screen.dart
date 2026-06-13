@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, int> _cart = {}; // Хранение корзины: id товара -> количество
   Map<String, int> _giftItems =
       {}; // Хранение подарочных товаров (id -> количество)
-  final int _currentAppVersion = 17; // Текущая версия этого приложения
+  final int _currentAppVersion = 18; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
