@@ -14,10 +14,122 @@ class DataManager {
   final String fileName = "data.json";
   final String userFileName = "user_data.json";
 
+  // 🔧 Оптимизация: параметры retry и кэширования
+  static const int maxRetries = 3;
+  static const int cacheMaxAgeSeconds = 3600; // 1 час
+  static const String etagPrefix = 'etag_';
+  static const String lastModifiedPrefix = 'lastmod_';
+
   int remoteAppVersion = 1;
   String appUpdateUrl = "";
   int localDataVersion = 0; // Добавляем для отображения в UI
   int localUserDataVersion = 0; // Добавляем для отображения в UI
+
+  // 🔧 Кэш для Etag и Last-Modified
+  final Map<String, String> _etagCache = {};
+  final Map<String, DateTime> _lastModifiedCache = {};
+
+  // 🔧 Инициализация кэша при создании объекта
+  DataManager() {
+    _initializeCacheFromPrefs();
+  }
+
+  Future<void> _initializeCacheFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final etag = prefs.getString(etagPrefix + fileName);
+      if (etag != null) _etagCache[fileName] = etag;
+      final lastMod = prefs.getString(lastModifiedPrefix + fileName);
+      if (lastMod != null) {
+        _lastModifiedCache[fileName] = DateTime.parse(lastMod);
+      }
+    } catch (e) {
+      debugPrint("Ошибка инициализации кэша: $e");
+    }
+  }
+
+  // 🔧 Сохранение Etag для условной загрузки
+  Future<void> _saveEtagAndLastModified(
+    String fileKey,
+    String? etag,
+    String? lastModified,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (etag != null) {
+        _etagCache[fileKey] = etag;
+        await prefs.setString(etagPrefix + fileKey, etag);
+      }
+      if (lastModified != null) {
+        _lastModifiedCache[fileKey] = DateTime.parse(lastModified);
+        await prefs.setString(lastModifiedPrefix + fileKey, lastModified);
+      }
+    } catch (e) {
+      debugPrint("Ошибка сохранения кэша: $e");
+    }
+  }
+
+  // 🔧 Retry механизм с exponential backoff
+  Future<http.Response> _retryableGet(String url) async {
+    int retryCount = 0;
+    Duration delay = const Duration(milliseconds: 500);
+
+    while (retryCount < maxRetries) {
+      try {
+        final response = await http
+            .get(
+              Uri.parse(url),
+              headers: {
+                'Cache-Control': 'max-age=$cacheMaxAgeSeconds',
+                if (_etagCache.containsKey(url))
+                  'If-None-Match': _etagCache[url]!,
+                if (_lastModifiedCache.containsKey(url))
+                  'If-Modified-Since': _lastModifiedCache[url].toString(),
+              },
+            )
+            .timeout(const Duration(seconds: 10));
+
+        // 304 Not Modified = кэш валиден
+        if (response.statusCode == 304) {
+          debugPrint("✅ Кэш валиден для $url (304 Not Modified)");
+          return response;
+        }
+
+        if (response.statusCode == 200) {
+          // Сохраняем Etag и Last-Modified для следующего запроса
+          await _saveEtagAndLastModified(
+            url,
+            response.headers['etag'],
+            response.headers['last-modified'],
+          );
+          return response;
+        }
+
+        // Для 4xx ошибок не повторяем
+        if (response.statusCode >= 400 && response.statusCode < 500) {
+          return response;
+        }
+
+        throw Exception("HTTP ${response.statusCode}");
+      } catch (e) {
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          debugPrint("❌ Ошибка после $maxRetries попыток: $e");
+          rethrow;
+        }
+
+        // Exponential backoff: 500ms → 1s → 2s
+        await Future.delayed(delay);
+        delay *= 2;
+
+        debugPrint(
+          "🔄 Попытка $retryCount/$maxRetries через ${delay.inMilliseconds}ms...",
+        );
+      }
+    }
+
+    throw Exception("Не удалось загрузить данные после $maxRetries попыток");
+  }
 
   Future<AppData> getLocalData() async {
     try {
@@ -53,92 +165,127 @@ class DataManager {
 
   Future<bool> syncWithGitHub() async {
     try {
-      // Добавляем текущее время, чтобы сбросить жесткий кэш GitHub
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      debugPrint("🔄 Начало синхронизации с GitHub...");
 
-      final versionResponse = await http.get(
-        Uri.parse('$repoUrl/version.json?t=$timestamp'),
-      );
-      if (versionResponse.statusCode == 200) {
-        final versionData = jsonDecode(versionResponse.body);
+      // 1️⃣ Загружаем version.json с retry
+      final versionUrl = '$repoUrl/version.json';
+      final versionResponse = await _retryableGet(versionUrl);
 
-        // Читаем версии данных и приложения
-        final int remoteDataVersion = versionData['data_version'] ?? 0;
-        final int remoteUserDataVersion = versionData['user_data_version'] ?? 0;
-        remoteAppVersion = versionData['app_version'] ?? 1;
-        appUpdateUrl = versionData['app_update_url'] ?? "";
-
-        final prefs = await SharedPreferences.getInstance();
-        localDataVersion = prefs.getInt('data_version') ?? 0;
-        localUserDataVersion = prefs.getInt('user_data_version') ?? 0;
-
+      if (versionResponse.statusCode != 200 &&
+          versionResponse.statusCode != 304) {
         debugPrint(
-          "Data sync check: Remote V$remoteDataVersion vs Local V$localDataVersion",
+          "❌ Ошибка загрузки version.json: ${versionResponse.statusCode}",
         );
+        return false;
+      }
 
-        bool isUpdated = false;
+      // Если кэш валиден (304), читаем локальные данные
+      String versionBody = versionResponse.body;
+      if (versionResponse.statusCode == 304) {
+        final prefs = await SharedPreferences.getInstance();
+        versionBody = prefs.getString('cached_version_json') ?? '{}';
+      } else {
+        // Сохраняем версию в кэш
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cached_version_json', versionResponse.body);
+        versionBody = versionResponse.body;
+      }
 
-        // 1. Проверяем и обновляем каталог товаров (data.json)
-        if (remoteDataVersion > localDataVersion) {
-          final dataResponse = await http.get(
-            Uri.parse('$repoUrl/data.json?t=$timestamp'),
-          );
+      final versionData = jsonDecode(versionBody);
+      final int remoteDataVersion = versionData['data_version'] ?? 0;
+      final int remoteUserDataVersion = versionData['user_data_version'] ?? 0;
+      remoteAppVersion = versionData['app_version'] ?? 1;
+      appUpdateUrl = versionData['app_update_url'] ?? "";
+
+      final prefs = await SharedPreferences.getInstance();
+      localDataVersion = prefs.getInt('data_version') ?? 0;
+      localUserDataVersion = prefs.getInt('user_data_version') ?? 0;
+
+      debugPrint(
+        "📊 Версии - Удаленные: data=$remoteDataVersion user=$remoteUserDataVersion | "
+        "Локальные: data=$localDataVersion user=$localUserDataVersion",
+      );
+
+      bool isUpdated = false;
+
+      // 2️⃣ Проверяем и обновляем каталог товаров (data.json) с retry
+      if (remoteDataVersion > localDataVersion) {
+        debugPrint("📥 Скачиваем новые товары (версия $remoteDataVersion)...");
+
+        try {
+          final dataUrl = '$repoUrl/$fileName';
+          final dataResponse = await _retryableGet(dataUrl);
+
           if (dataResponse.statusCode == 200) {
             final directory = await getApplicationDocumentsDirectory();
             final file = File('${directory.path}/$fileName');
             await file.writeAsString(dataResponse.body);
-            await prefs.setInt(
-              'data_version',
-              remoteDataVersion,
-            ); // Обновляем SharedPreferences
-            localDataVersion = remoteDataVersion; // Обновляем для UI
+            await prefs.setInt('data_version', remoteDataVersion);
+            localDataVersion = remoteDataVersion;
             isUpdated = true;
+            debugPrint("✅ Товары обновлены до версии $remoteDataVersion");
+          } else if (dataResponse.statusCode == 304) {
+            debugPrint("✅ Кэш товаров валиден (не обновляем)");
           }
+        } catch (e) {
+          debugPrint("⚠️ Ошибка загрузки товаров: $e");
         }
+      }
 
-        // 2. Проверяем и обновляем отзывы/статьи пользователей (user_data.json)
-        if (remoteUserDataVersion > localUserDataVersion) {
-          final userDataResponse = await http.get(
-            Uri.parse('$repoUrl/$userFileName?t=$timestamp'),
-          );
+      // 3️⃣ Проверяем и обновляем user_data.json с retry
+      if (remoteUserDataVersion > localUserDataVersion) {
+        debugPrint(
+          "📥 Скачиваем отзывы/статьи (версия $remoteUserDataVersion)...",
+        );
+
+        try {
+          final userUrl = '$repoUrl/$userFileName';
+          final userDataResponse = await _retryableGet(userUrl);
+
           if (userDataResponse.statusCode == 200) {
             try {
               final remoteUserData = jsonDecode(userDataResponse.body);
               final remoteArticles = remoteUserData['articles'] as List? ?? [];
               final remoteReviews = remoteUserData['reviews'] as List? ?? [];
-
               final localUserData = await getLocalUserData();
 
-              // Защита от случайного обнуления: если сервер прислал пустой файл, не удаляем локальные данные
+              // Защита от обнуления: если сервер прислал пустой файл
               if (remoteArticles.isEmpty &&
                   remoteReviews.isEmpty &&
                   (localUserData.articles.isNotEmpty ||
                       localUserData.reviews.isNotEmpty)) {
                 debugPrint(
-                  "Сервер прислал пустую базу. Локальные данные сохранены для безопасности.",
+                  "⚠️ Сервер прислал пустую базу. Данные сохранены для безопасности.",
                 );
               } else {
                 final directory = await getApplicationDocumentsDirectory();
                 final userFile = File('${directory.path}/$userFileName');
                 await userFile.writeAsString(userDataResponse.body);
-                await prefs.setInt(
-                  'user_data_version',
-                  remoteUserDataVersion,
-                ); // Обновляем SharedPreferences
-                localUserDataVersion =
-                    remoteUserDataVersion; // Обновляем для UI
+                await prefs.setInt('user_data_version', remoteUserDataVersion);
+                localUserDataVersion = remoteUserDataVersion;
                 isUpdated = true;
+                debugPrint(
+                  "✅ Отзывы/статьи обновлены до версии $remoteUserDataVersion",
+                );
               }
             } catch (e) {
-              debugPrint("Ошибка парсинга удаленного user_data.json: $e");
+              debugPrint("⚠️ Ошибка парсинга user_data.json: $e");
             }
+          } else if (userDataResponse.statusCode == 304) {
+            debugPrint("✅ Кэш отзывов валиден (не обновляем)");
           }
+        } catch (e) {
+          debugPrint("⚠️ Ошибка загрузки отзывов: $e");
         }
-
-        return isUpdated;
       }
+
+      if (!isUpdated) {
+        debugPrint("✅ Данные актуальны, обновление не требуется");
+      }
+
+      return isUpdated;
     } catch (e) {
-      debugPrint("Ошибка синхронизации (нет интернета): $e");
+      debugPrint("❌ Критическая ошибка синхронизации: $e");
     }
     return false;
   }
@@ -163,6 +310,104 @@ class DataManager {
     } catch (e) {
       debugPrint("Ошибка записи локального user_data.json: $e");
     }
+  }
+
+  // 🔧 НОВОЕ: Загрузка товаров по категориям для оптимизации
+  // Если на GitHub разделены файлы: products_oils.json, products_tea.json и т.д.
+  // Скачиваем только нужные категории
+  Future<AppData> getLocalDataByCategory(String category) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      // Кэшируем каждую категорию отдельно
+      final categoryFile = File('${directory.path}/products_$category.json');
+
+      if (await categoryFile.exists()) {
+        final jsonString = await categoryFile.readAsString();
+        final jsonMap = jsonDecode(jsonString);
+
+        // Преобразуем в AppData с только товарами этой категории
+        List<Product> categoryProducts = [];
+        if (jsonMap['products'] is List) {
+          categoryProducts = (jsonMap['products'] as List)
+              .map((p) => Product.fromJson(p))
+              .toList();
+        }
+
+        return AppData(
+          products: categoryProducts,
+          categories: [category],
+          articles: [],
+          reviews: [],
+        );
+      }
+    } catch (e) {
+      debugPrint("Ошибка чтения категории $category: $e");
+    }
+    return AppData(products: [], articles: [], categories: [], reviews: []);
+  }
+
+  // 🔧 НОВОЕ: Синхронизация конкретной категории товаров
+  Future<bool> syncCategoryWithGitHub(String category) async {
+    try {
+      debugPrint("📥 Синхронизация категории '$category'...");
+
+      final prefs = await SharedPreferences.getInstance();
+      final localCategoryVersion =
+          prefs.getInt('category_version_$category') ?? 0;
+
+      // Проверяем версию категории
+      final categoryVersionUrl = '$repoUrl/categories/$category/version.json';
+
+      try {
+        final versionResponse = await _retryableGet(categoryVersionUrl);
+
+        if (versionResponse.statusCode != 200 &&
+            versionResponse.statusCode != 304) {
+          debugPrint("⚠️ Категория $category не найдена на сервере");
+          return false;
+        }
+
+        final versionData = jsonDecode(versionResponse.body);
+        final remoteCategoryVersion = versionData['version'] ?? 0;
+
+        if (remoteCategoryVersion > localCategoryVersion) {
+          // Скачиваем файл категории
+          final productUrl = '$repoUrl/categories/$category/products.json';
+          final productResponse = await _retryableGet(productUrl);
+
+          if (productResponse.statusCode == 200) {
+            final directory = await getApplicationDocumentsDirectory();
+            final file = File('${directory.path}/products_$category.json');
+            await file.writeAsString(productResponse.body);
+            await prefs.setInt(
+              'category_version_$category',
+              remoteCategoryVersion,
+            );
+            debugPrint("✅ Категория '$category' обновлена");
+            return true;
+          }
+        } else {
+          debugPrint("✅ Категория '$category' актуальна");
+        }
+      } catch (e) {
+        debugPrint("⚠️ Ошибка синхронизации категории $category: $e");
+      }
+    } catch (e) {
+      debugPrint("❌ Критическая ошибка синхронизации категории: $e");
+    }
+    return false;
+  }
+
+  // 🔧 НОВОЕ: Загрузить все категории параллельно
+  Future<void> syncAllCategoriesWithGitHub(List<String> categories) async {
+    debugPrint(
+      "📥 Синхронизация ${categories.length} категорий параллельно...",
+    );
+
+    final futures = categories.map((cat) => syncCategoryWithGitHub(cat));
+    await Future.wait(futures, eagerError: false);
+
+    debugPrint("✅ Синхронизация категорий завершена");
   }
 
   Future<bool> uploadUserDataToGitHub(UserData data, String token) async {
