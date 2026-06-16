@@ -1,11 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
+
+AppData _parseAppData(String jsonString) {
+  return AppData.fromJson(jsonDecode(jsonString));
+}
+
+UserData _parseUserData(String jsonString) {
+  return UserData.fromJson(jsonDecode(jsonString));
+}
 
 class DataManager {
   // ВАЖНО: Замените на вашу прямую ссылку до папки на GitHub
@@ -27,21 +35,32 @@ class DataManager {
 
   // 🔧 Кэш для Etag и Last-Modified
   final Map<String, String> _etagCache = {};
-  final Map<String, DateTime> _lastModifiedCache = {};
+  final Map<String, String> _lastModifiedCache =
+      {}; // Храним строку HTTP-заголовка, не DateTime
+  bool _cacheInitialized = false;
 
   // 🔧 Инициализация кэша при создании объекта
   DataManager() {
     _initializeCacheFromPrefs();
   }
 
+  Future<void> _ensureCacheInitialized() async {
+    if (_cacheInitialized) return;
+    await _initializeCacheFromPrefs();
+    _cacheInitialized = true;
+  }
+
   Future<void> _initializeCacheFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final etag = prefs.getString(etagPrefix + fileName);
-      if (etag != null) _etagCache[fileName] = etag;
-      final lastMod = prefs.getString(lastModifiedPrefix + fileName);
-      if (lastMod != null) {
-        _lastModifiedCache[fileName] = DateTime.parse(lastMod);
+      final keys = [fileName, userFileName, 'version.json'];
+      for (final key in keys) {
+        final etag = prefs.getString(etagPrefix + key);
+        if (etag != null) _etagCache[key] = etag;
+        final lastMod = prefs.getString(lastModifiedPrefix + key);
+        if (lastMod != null) {
+          _lastModifiedCache[key] = lastMod;
+        }
       }
     } catch (e) {
       debugPrint("Ошибка инициализации кэша: $e");
@@ -61,7 +80,7 @@ class DataManager {
         await prefs.setString(etagPrefix + fileKey, etag);
       }
       if (lastModified != null) {
-        _lastModifiedCache[fileKey] = DateTime.parse(lastModified);
+        _lastModifiedCache[fileKey] = lastModified;
         await prefs.setString(lastModifiedPrefix + fileKey, lastModified);
       }
     } catch (e) {
@@ -69,10 +88,23 @@ class DataManager {
     }
   }
 
+  String _cacheKeyForUrl(String url) {
+    if (url.endsWith('version.json')) return 'version.json';
+    if (url.contains('/categories/')) {
+      final parts = url.split('/');
+      return parts.length >= 2
+          ? parts.sublist(parts.length - 2).join('/')
+          : url;
+    }
+    return url.split('/').last;
+  }
+
   // 🔧 Retry механизм с exponential backoff
   Future<http.Response> _retryableGet(String url) async {
+    await _ensureCacheInitialized();
     int retryCount = 0;
     Duration delay = const Duration(milliseconds: 500);
+    final cacheKey = _cacheKeyForUrl(url);
 
     while (retryCount < maxRetries) {
       try {
@@ -81,10 +113,10 @@ class DataManager {
               Uri.parse(url),
               headers: {
                 'Cache-Control': 'max-age=$cacheMaxAgeSeconds',
-                if (_etagCache.containsKey(url))
-                  'If-None-Match': _etagCache[url]!,
-                if (_lastModifiedCache.containsKey(url))
-                  'If-Modified-Since': _lastModifiedCache[url].toString(),
+                if (_etagCache.containsKey(cacheKey))
+                  'If-None-Match': _etagCache[cacheKey]!,
+                if (_lastModifiedCache.containsKey(cacheKey))
+                  'If-Modified-Since': _lastModifiedCache[cacheKey]!,
               },
             )
             .timeout(const Duration(seconds: 10));
@@ -98,7 +130,7 @@ class DataManager {
         if (response.statusCode == 200) {
           // Сохраняем Etag и Last-Modified для следующего запроса
           await _saveEtagAndLastModified(
-            url,
+            cacheKey,
             response.headers['etag'],
             response.headers['last-modified'],
           );
@@ -138,8 +170,7 @@ class DataManager {
 
       if (await file.exists()) {
         final jsonString = await file.readAsString();
-        final jsonMap = jsonDecode(jsonString);
-        return AppData.fromJson(jsonMap);
+        return await compute(_parseAppData, jsonString);
       }
     } catch (e) {
       debugPrint("Ошибка чтения локального файла: $e");
@@ -154,8 +185,7 @@ class DataManager {
 
       if (await file.exists()) {
         final jsonString = await file.readAsString();
-        final jsonMap = jsonDecode(jsonString);
-        return UserData.fromJson(jsonMap);
+        return await compute(_parseUserData, jsonString);
       }
     } catch (e) {
       debugPrint("Ошибка чтения локального user_data.json: $e");
@@ -539,7 +569,7 @@ class DataManager {
         body: jsonEncode({
           "message": "Загрузка картинки $fileName",
           "content": base64String,
-          "sha": ?existingSha,
+          "sha": existingSha,
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {

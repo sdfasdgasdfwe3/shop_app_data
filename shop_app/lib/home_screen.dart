@@ -341,8 +341,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    final localData = await dataManager.getLocalData();
-    final localUserData = await dataManager.getLocalUserData();
+    final results = await Future.wait([
+      dataManager.getLocalData(),
+      dataManager.getLocalUserData(),
+    ]);
+
+    final localData = results[0] as AppData;
+    final localUserData = results[1] as UserData;
     setState(() {
       appData = localData;
       userData = localUserData;
@@ -1470,20 +1475,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
               ],
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Версии данных:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Версия товаров (data.json): ${dataManager.localDataVersion}',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            Text(
-              'Версия статей/отзывов (user_data.json): ${dataManager.localUserDataVersion}',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 24),
             const Text(
