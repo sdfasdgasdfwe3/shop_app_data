@@ -62,19 +62,15 @@ class DataManager {
       if (versionResponse.statusCode == 200) {
         final versionData = jsonDecode(versionResponse.body);
 
-        // Читаем версии. Fallback на 'version' для совместимости с Admin Panel в браузере
-        final int remoteDataVersion =
-            versionData['data_version'] ?? versionData['version'] ?? 0;
-        final int remoteUserDataVersion =
-            versionData['user_data_version'] ?? versionData['version'] ?? 0;
+        // Читаем версии данных и приложения
+        final int remoteDataVersion = versionData['data_version'] ?? 0;
+        final int remoteUserDataVersion = versionData['user_data_version'] ?? 0;
         remoteAppVersion = versionData['app_version'] ?? 1;
         appUpdateUrl = versionData['app_update_url'] ?? "";
 
         final prefs = await SharedPreferences.getInstance();
-        localDataVersion =
-            prefs.getInt('data_version') ?? prefs.getInt('version') ?? 0;
-        localUserDataVersion =
-            prefs.getInt('user_data_version') ?? prefs.getInt('version') ?? 0;
+        localDataVersion = prefs.getInt('data_version') ?? 0;
+        localUserDataVersion = prefs.getInt('user_data_version') ?? 0;
 
         debugPrint(
           "Data sync check: Remote V$remoteDataVersion vs Local V$localDataVersion",
@@ -95,8 +91,7 @@ class DataManager {
               'data_version',
               remoteDataVersion,
             ); // Обновляем SharedPreferences
-            localDataVersion =
-                remoteDataVersion; // Обновляем текущее значение для UI
+            localDataVersion = remoteDataVersion; // Обновляем для UI
             isUpdated = true;
           }
         }
@@ -231,8 +226,7 @@ class DataManager {
           base64Decode(vJson['content'].replaceAll('\n', '')),
         );
         vData = jsonDecode(decodedStr);
-        currentUserVersion =
-            vData['user_data_version'] ?? vData['version'] ?? 1;
+        currentUserVersion = vData['user_data_version'] ?? 1;
       }
 
       // 4. Повышаем ТОЛЬКО пользовательскую версию (data_version остается неизменной)

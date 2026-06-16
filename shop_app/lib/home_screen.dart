@@ -1633,6 +1633,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _githubToken,
       );
       if (imgError != null) {
+        if (!mounted) return;
         if (mounted) {
           ScaffoldMessenger.of(
             context,

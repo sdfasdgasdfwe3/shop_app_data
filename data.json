@@ -11,6 +11,15 @@
   ],
   "products": [
     {
+      "id": 51,
+      "name": "йукйцукйц",
+      "description": "",
+      "image": "",
+      "price": 7,
+      "points": 0,
+      "category": ""
+    },
+    {
       "id": 50,
       "name": "фыафвыа",
       "description": "",
