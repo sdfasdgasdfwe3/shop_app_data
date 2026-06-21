@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, int> _cart = {}; // Хранение корзины: id товара -> количество
   Map<String, int> _giftItems =
       {}; // Хранение подарочных товаров (id -> количество)
-  final int _currentAppVersion = 19; // Текущая версия этого приложения
+  final int _currentAppVersion = 20; // Текущая версия этого приложения
   bool _updateDialogShown = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
@@ -340,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool refresh = false}) async {
     final results = await Future.wait([
       dataManager.getLocalData(),
       dataManager.getLocalUserData(),
@@ -353,9 +353,20 @@ class _HomeScreenState extends State<HomeScreen> {
       userData = localUserData;
       _shuffledProducts = List.from(localData.products)
         ..shuffle(); // Перемешиваем только копию
-      isLoading = localData.products.isEmpty && localData.articles.isEmpty;
+      if (!refresh) {
+        isLoading = localData.products.isEmpty && localData.articles.isEmpty;
+      }
     });
 
+    if (refresh) {
+      _syncRemoteData();
+      return;
+    }
+
+    await _syncRemoteData();
+  }
+
+  Future<void> _syncRemoteData() async {
     final isUpdated = await dataManager.syncWithGitHub();
 
     // Защита: проверяем, что экран всё ещё открыт, прежде чем обновлять интерфейс
@@ -695,7 +706,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return Expanded(
       child: RefreshIndicator(
-        onRefresh: _loadData,
+        onRefresh: () => _loadData(refresh: true),
         child: items.isEmpty
             ? ListView(
                 children: [
@@ -815,7 +826,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       builder: (context) => ProductDetailScreen(
                         product: product,
                         allProducts: appData.products,
-                        onAddToCart: (id) => _addToCart(id, showSnackbar: true),
+                        getCartQuantity: (id) => _cart[id.toString()] ?? 0,
+                        onIncrement: (id) => _addToCart(id, showSnackbar: true),
+                        onDecrement: (id) => _removeFromCart(id),
                       ),
                     ),
                   );
