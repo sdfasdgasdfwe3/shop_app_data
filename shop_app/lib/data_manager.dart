@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -111,13 +112,15 @@ class DataManager {
         final response = await http
             .get(
               Uri.parse(url),
-              headers: {
-                'Cache-Control': 'max-age=$cacheMaxAgeSeconds',
-                if (_etagCache.containsKey(cacheKey))
-                  'If-None-Match': _etagCache[cacheKey]!,
-                if (_lastModifiedCache.containsKey(cacheKey))
-                  'If-Modified-Since': _lastModifiedCache[cacheKey]!,
-              },
+              headers: kIsWeb
+                  ? {} // В вебе браузер кэширует сам, кастомные заголовки вызовут ошибку CORS preflight (OPTIONS)
+                  : {
+                      'Cache-Control': 'max-age=$cacheMaxAgeSeconds',
+                      if (_etagCache.containsKey(cacheKey))
+                        'If-None-Match': _etagCache[cacheKey]!,
+                      if (_lastModifiedCache.containsKey(cacheKey))
+                        'If-Modified-Since': _lastModifiedCache[cacheKey]!,
+                    },
             )
             .timeout(const Duration(seconds: 10));
 
@@ -163,13 +166,43 @@ class DataManager {
     throw Exception("Не удалось загрузить данные после $maxRetries попыток");
   }
 
+  Future<String?> _loadFile(String filename) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('cached_file_$filename');
+    } else {
+      try {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/$filename');
+        if (await file.exists()) {
+          return await file.readAsString();
+        }
+      } catch (e) {
+        debugPrint("Ошибка чтения файла $filename: $e");
+      }
+      return null;
+    }
+  }
+
+  Future<void> _saveFile(String filename, String content) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (kIsWeb) {
+      await prefs.setString('cached_file_$filename', content);
+    } else {
+      try {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/$filename');
+        await file.writeAsString(content);
+      } catch (e) {
+        debugPrint("Ошибка записи файла $filename: $e");
+      }
+    }
+  }
+
   Future<AppData> getLocalData() async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$fileName');
-
-      if (await file.exists()) {
-        final jsonString = await file.readAsString();
+      final jsonString = await _loadFile(fileName);
+      if (jsonString != null && jsonString.isNotEmpty) {
         return await compute(_parseAppData, jsonString);
       }
     } catch (e) {
@@ -180,11 +213,8 @@ class DataManager {
 
   Future<UserData> getLocalUserData() async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$userFileName');
-
-      if (await file.exists()) {
-        final jsonString = await file.readAsString();
+      final jsonString = await _loadFile(userFileName);
+      if (jsonString != null && jsonString.isNotEmpty) {
         return await compute(_parseUserData, jsonString);
       }
     } catch (e) {
@@ -247,9 +277,7 @@ class DataManager {
           final dataResponse = await _retryableGet(dataUrl);
 
           if (dataResponse.statusCode == 200) {
-            final directory = await getApplicationDocumentsDirectory();
-            final file = File('${directory.path}/$fileName');
-            await file.writeAsString(dataResponse.body);
+            await _saveFile(fileName, dataResponse.body);
             await prefs.setInt('data_version', remoteDataVersion);
             localDataVersion = remoteDataVersion;
             isUpdated = true;
@@ -288,9 +316,7 @@ class DataManager {
                   "⚠️ Сервер прислал пустую базу. Данные сохранены для безопасности.",
                 );
               } else {
-                final directory = await getApplicationDocumentsDirectory();
-                final userFile = File('${directory.path}/$userFileName');
-                await userFile.writeAsString(userDataResponse.body);
+                await _saveFile(userFileName, userDataResponse.body);
                 await prefs.setInt('user_data_version', remoteUserDataVersion);
                 localUserDataVersion = remoteUserDataVersion;
                 isUpdated = true;
@@ -322,10 +348,8 @@ class DataManager {
 
   Future<void> saveLocalData(AppData data) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$fileName');
       final jsonString = jsonEncode(data.toJson());
-      await file.writeAsString(jsonString);
+      await _saveFile(fileName, jsonString);
     } catch (e) {
       debugPrint("Ошибка записи локального файла: $e");
     }
@@ -333,10 +357,8 @@ class DataManager {
 
   Future<void> saveLocalUserData(UserData data) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$userFileName');
       final jsonString = jsonEncode(data.toJson());
-      await file.writeAsString(jsonString);
+      await _saveFile(userFileName, jsonString);
     } catch (e) {
       debugPrint("Ошибка записи локального user_data.json: $e");
     }
@@ -347,12 +369,8 @@ class DataManager {
   // Скачиваем только нужные категории
   Future<AppData> getLocalDataByCategory(String category) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      // Кэшируем каждую категорию отдельно
-      final categoryFile = File('${directory.path}/products_$category.json');
-
-      if (await categoryFile.exists()) {
-        final jsonString = await categoryFile.readAsString();
+      final jsonString = await _loadFile('products_$category.json');
+      if (jsonString != null && jsonString.isNotEmpty) {
         final jsonMap = jsonDecode(jsonString);
 
         // Преобразуем в AppData с только товарами этой категории
@@ -406,9 +424,7 @@ class DataManager {
           final productResponse = await _retryableGet(productUrl);
 
           if (productResponse.statusCode == 200) {
-            final directory = await getApplicationDocumentsDirectory();
-            final file = File('${directory.path}/products_$category.json');
-            await file.writeAsString(productResponse.body);
+            await _saveFile('products_$category.json', productResponse.body);
             await prefs.setInt(
               'category_version_$category',
               remoteCategoryVersion,
@@ -534,7 +550,7 @@ class DataManager {
   }
 
   Future<String?> uploadImageToGitHub(
-    File imageFile,
+    Uint8List imageBytes,
     String fileName,
     String token,
   ) async {
@@ -556,8 +572,7 @@ class DataManager {
         existingSha = jsonDecode(checkResponse.body)['sha'];
       }
 
-      final bytes = await imageFile.readAsBytes();
-      final base64String = base64Encode(bytes);
+      final base64String = base64Encode(imageBytes);
 
       final response = await http.put(
         Uri.parse(apiUrl),

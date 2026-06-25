@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
@@ -84,18 +85,24 @@ class ContentDetailScreen extends StatelessWidget {
                 );
                 try {
                   final response = await http.get(Uri.parse(imageUrl));
-                  final tempDir = await getTemporaryDirectory();
-                  final file = await File(
-                    '${tempDir.path}/share_${item.image}',
-                  ).create();
-                  await file.writeAsBytes(response.bodyBytes);
+                  if (response.statusCode == 200) {
+                    if (!context.mounted) return;
+                    messenger.hideCurrentSnackBar();
 
-                  if (!context.mounted) return;
-                  messenger.hideCurrentSnackBar();
-
-                  await Share.shareXFiles([XFile(file.path)], text: shareText);
+                    final xFile = XFile.fromData(
+                      response.bodyBytes,
+                      mimeType: 'image/jpeg',
+                      name: 'share_content.jpg',
+                    );
+                    await Share.shareXFiles([xFile], text: shareText);
+                  } else {
+                    throw Exception('Failed to load image');
+                  }
                 } catch (e) {
-                  Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
+                  if (context.mounted) {
+                    messenger.hideCurrentSnackBar();
+                  }
+                  await Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
                 }
               } else {
                 Share.share(shareText);

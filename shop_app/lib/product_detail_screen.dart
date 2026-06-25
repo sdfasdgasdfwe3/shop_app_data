@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
@@ -305,23 +306,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     try {
       final response = await http.get(Uri.parse(imageUrl));
       if (response.statusCode == 200) {
-        final tempDir = await getTemporaryDirectory();
-        final file = await File(
-          '${tempDir.path}/share_${widget.product.image}',
-        ).create();
-        await file.writeAsBytes(response.bodyBytes);
-
         if (!context.mounted) return;
         messenger.hideCurrentSnackBar();
 
-        await Share.shareXFiles([XFile(file.path)], text: shareText);
+        final xFile = XFile.fromData(
+          response.bodyBytes,
+          mimeType: 'image/jpeg',
+          name: 'share_product.jpg',
+        );
+        await Share.shareXFiles([xFile], text: shareText);
       } else {
         throw Exception('Failed to load image');
       }
     } catch (e) {
-      Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
+      if (context.mounted) {
+        messenger.hideCurrentSnackBar();
+      }
+      await Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
     }
   }
+
 
   Widget _buildAppBar(BuildContext context, String imageUrl, String shareText) {
     final double opacity = (_scrollOffset / 180.0).clamp(0.0, 1.0);

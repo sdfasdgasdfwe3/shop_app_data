@@ -157,7 +157,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                   clientPhone.isNotEmpty) ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Клиент: $clientName ${clientPhone.isNotEmpty ? '($clientPhone)' : ''}',
+                                  '${clientName.isNotEmpty ? 'ID номер: $clientName' : ''}${clientName.isNotEmpty && clientPhone.isNotEmpty ? ' ' : ''}${clientPhone.isNotEmpty ? '($clientPhone)' : ''}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w500,
                                     fontSize: 15,
@@ -238,7 +238,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                       String shareText =
                                           ' Накладная от $formattedDate\n\n';
                                       if (clientName.isNotEmpty) {
-                                        shareText += '👤 Клиент: $clientName\n';
+                                        shareText += '👤 ID номер: $clientName\n';
                                       }
                                       if (clientPhone.isNotEmpty) {
                                         shareText +=
