@@ -10,6 +10,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'package:share_plus/share_plus.dart';
 import 'main.dart'; // Импортируем для доступа к themeNotifier
 import 'models.dart';
 import 'data_manager.dart';
@@ -74,6 +77,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
 
+  // Переменные для раздела «Именное» (генератор промо-карточек)
+  final TextEditingController _promoPhoneController = TextEditingController();
+  final TextEditingController _promoTgController = TextEditingController();
+  Product? _selectedPromoProduct;
+  String _promoFormat = 'square'; // 'square' (1:1), 'story' (9:16)
+  String _promoTheme = 'dark'; // 'dark' (Изумруд), 'light' (Эко)
+  String _promoPriceMode = 'retail'; // 'retail' (Розничная цена), 'partner', 'none'
+  final GlobalKey _promoRepaintKey = GlobalKey();
+  bool _isExportingPromo = false;
+
   @override
   void initState() {
     super.initState();
@@ -89,9 +102,27 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _hidePricePoints = prefs.getBool('hide_price_points') ?? false;
         _sendRetailPrice = prefs.getBool('send_retail_price') ?? false;
+        _promoPhoneController.text = prefs.getString('custom_promo_phone') ?? '';
+        _promoTgController.text = prefs.getString('custom_promo_tg') ?? '';
+        _promoFormat = prefs.getString('custom_promo_format') ?? 'square';
+        _promoTheme = prefs.getString('custom_promo_theme') ?? 'dark';
+        _promoPriceMode = prefs.getString('custom_promo_price_mode') ?? 'retail';
       });
     } catch (e) {
       debugPrint('Ошибка загрузки настроек: $e');
+    }
+  }
+
+  Future<void> _savePromoSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('custom_promo_phone', _promoPhoneController.text);
+      await prefs.setString('custom_promo_tg', _promoTgController.text);
+      await prefs.setString('custom_promo_format', _promoFormat);
+      await prefs.setString('custom_promo_theme', _promoTheme);
+      await prefs.setString('custom_promo_price_mode', _promoPriceMode);
+    } catch (e) {
+      debugPrint('Ошибка сохранения промо-настроек: $e');
     }
   }
 
@@ -470,6 +501,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _adminTitleController.dispose();
     _adminContentController.dispose();
     _adminImageController.dispose();
+    _promoPhoneController.dispose();
+    _promoTgController.dispose();
     super.dispose();
   }
 
@@ -486,6 +519,9 @@ class _HomeScreenState extends State<HomeScreen> {
       userData = localUserData;
       _shuffledProducts = List.from(localData.products)
         ..shuffle(); // Перемешиваем только копию
+      if (_selectedPromoProduct == null && localData.products.isNotEmpty) {
+        _selectedPromoProduct = localData.products.first;
+      }
       if (!refresh) {
         isLoading = localData.products.isEmpty && localData.articles.isEmpty;
       }
@@ -521,6 +557,14 @@ class _HomeScreenState extends State<HomeScreen> {
         userData = newUserData;
         _shuffledProducts = List.from(newData.products)
           ..shuffle(); // Обновляем копию
+        if (_selectedPromoProduct == null && newData.products.isNotEmpty) {
+          _selectedPromoProduct = newData.products.first;
+        } else if (_selectedPromoProduct != null && newData.products.isNotEmpty) {
+          _selectedPromoProduct = newData.products.firstWhere(
+            (p) => p.id == _selectedPromoProduct!.id,
+            orElse: () => newData.products.first,
+          );
+        }
         isLoading = false;
       });
     } else {
@@ -818,6 +862,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   const BottomNavigationBarItem(
                     icon: Padding(
                       padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.auto_awesome_outlined),
+                    ),
+                    activeIcon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(Icons.auto_awesome),
+                    ),
+                    label: 'Именное',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4, top: 8),
                       child: Icon(Icons.person_outline),
                     ),
                     activeIcon: Padding(
@@ -1079,6 +1134,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     } else if (_selectedIndex == 3) {
       return _buildCartScreen();
+    } else if (_selectedIndex == 4) {
+      return _buildCustomPromoScreen();
     } else {
       return _buildProfileScreen();
     }
@@ -1503,6 +1560,1242 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  // ==========================================
+  // РАЗДЕЛ «ИМЕННОЕ»: ГЕНЕРАТОР ПРОМО-КАРТОЧЕК
+  // ==========================================
+
+  Widget _buildCustomPromoScreen() {
+    if (appData.products.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    _selectedPromoProduct ??= appData.products.first;
+    final product = _selectedPromoProduct!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 120),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Приветственный баннер раздела
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF0F3628), const Color(0xFF082017)]
+                    : [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF34D399).withValues(alpha: 0.3)
+                    : const Color(0xFFA7F3D0),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Color(0xFF10B981),
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Именные промо-карточки',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF065F46),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Генерируйте карточки для Telegram и WhatsApp с вашими личными контактами для заказов',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? Colors.grey.shade300
+                              : const Color(0xFF047857),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Карточка 1: Личные контакты дистрибьютора
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.badge_outlined, size: 20, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text(
+                        'Контакты для заказа и консультации',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _promoPhoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Ваш номер телефона',
+                      hintText: '+7 (999) 000-00-00',
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                    ),
+                    onChanged: (_) {
+                      setState(() {});
+                      _savePromoSettings();
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _promoTgController,
+                    decoration: InputDecoration(
+                      labelText: 'Telegram / WhatsApp контакт',
+                      hintText: '@username или ссылка',
+                      prefixIcon: const Icon(Icons.send_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                    ),
+                    onChanged: (_) {
+                      setState(() {});
+                      _savePromoSettings();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Карточка 2: Параметры карточки
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.tune, size: 20, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text(
+                        'Параметры карточки',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Выбор продукта
+                  const Text(
+                    'Выберите продукт:',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<Product>(
+                    value: _selectedPromoProduct,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                    ),
+                    items: appData.products.map((p) {
+                      return DropdownMenuItem<Product>(
+                        value: p,
+                        child: Text(
+                          p.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (newProduct) {
+                      if (newProduct != null) {
+                        setState(() {
+                          _selectedPromoProduct = newProduct;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Выбор формата (размера)
+                  const Text(
+                    'Размер карточки:',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('1:1 Пост')),
+                          selected: _promoFormat == 'square',
+                          selectedColor: Colors.blue,
+                          labelStyle: TextStyle(
+                            color: _promoFormat == 'square' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoFormat = 'square');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('9:16 Сторис')),
+                          selected: _promoFormat == 'story',
+                          selectedColor: Colors.blue,
+                          labelStyle: TextStyle(
+                            color: _promoFormat == 'story' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoFormat = 'story');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Выбор стиля
+                  const Text(
+                    'Стиль оформления:',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('🌲 Изумрудный')),
+                          selected: _promoTheme == 'dark',
+                          selectedColor: const Color(0xFF065F46),
+                          labelStyle: TextStyle(
+                            color: _promoTheme == 'dark' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoTheme = 'dark');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('🕊️ Эко-светлый')),
+                          selected: _promoTheme == 'light',
+                          selectedColor: Colors.teal.shade700,
+                          labelStyle: TextStyle(
+                            color: _promoTheme == 'light' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoTheme = 'light');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Выбор отображения цены
+                  const Text(
+                    'Отображение цены:',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Розничная цена'),
+                          selected: _promoPriceMode == 'retail',
+                          selectedColor: const Color(0xFFF59E0B),
+                          labelStyle: TextStyle(
+                            color: _promoPriceMode == 'retail'
+                                ? const Color(0xFF0F172A)
+                                : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoPriceMode = 'retail');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Text('Партнерская'),
+                          selected: _promoPriceMode == 'partner',
+                          selectedColor: Colors.blue,
+                          labelStyle: TextStyle(
+                            color: _promoPriceMode == 'partner' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoPriceMode = 'partner');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Text('Без цены («в ЛС»)'),
+                          selected: _promoPriceMode == 'none',
+                          selectedColor: Colors.blue,
+                          labelStyle: TextStyle(
+                            color: _promoPriceMode == 'none' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoPriceMode = 'none');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Заголовок предпросмотра
+          const Center(
+            child: Text(
+              'Предпросмотр карточки',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Контейнер предпросмотра с RepaintBoundary
+          Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: RepaintBoundary(
+                key: _promoRepaintKey,
+                child: _buildPromoCardWidget(product),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Кнопка экспорта / отправки
+          SizedBox(
+            height: 52,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 4,
+              ),
+              onPressed: _isExportingPromo ? null : _exportAndSharePromoCard,
+              icon: _isExportingPromo
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Icon(Icons.share, size: 22),
+              label: Text(
+                _isExportingPromo
+                    ? 'Формирование изображения...'
+                    : 'Поделиться карточкой в Telegram / WhatsApp',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  List<String> _extractPromoBullets(Product product) {
+    final lines = product.description
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) =>
+            l.isNotEmpty &&
+            !l.startsWith('Состав:') &&
+            !l.startsWith('Рекомендации') &&
+            !l.startsWith('Активные') &&
+            !l.startsWith('Полезные свойства'))
+        .toList();
+
+    List<String> bullets = [];
+    for (var l in lines) {
+      String cleaned = l;
+      if (cleaned.startsWith('•') ||
+          cleaned.startsWith('-') ||
+          cleaned.startsWith('+') ||
+          cleaned.startsWith('«')) {
+        cleaned = cleaned.replaceAll(RegExp(r'^[•\-\+«]+'), '').trim();
+      }
+      if (cleaned.contains('—')) {
+        cleaned = cleaned.split('—').first.trim();
+      } else if (cleaned.contains(':') && !cleaned.contains('http')) {
+        cleaned = cleaned.split(':').first.trim();
+      }
+      if (cleaned.length > 5 && cleaned.length < 55 && !bullets.contains(cleaned)) {
+        bullets.add(cleaned);
+      }
+      if (bullets.length >= 3) break;
+    }
+
+    if (bullets.isEmpty) {
+      bullets = [
+        '100% Натуральный природный фитокомплекс',
+        'Высокая биодоступность активных веществ',
+        'Комплексная поддержка и защита организма',
+      ];
+    } else if (bullets.length < 3) {
+      bullets.add('Гарантия подлинности и качества');
+    }
+    return bullets.take(3).toList();
+  }
+
+  Widget _buildPromoCardWidget(Product product) {
+    final isDark = _promoTheme == 'dark';
+    final isSquare = _promoFormat == 'square';
+    final phone = _promoPhoneController.text.isNotEmpty
+        ? _promoPhoneController.text
+        : '+7 (999) 777-22-33';
+    final tg = _promoTgController.text.isNotEmpty
+        ? _promoTgController.text
+        : '@infinity_partner';
+    final bullets = _extractPromoBullets(product);
+    final imageUrl = "${dataManager.repoUrl}/images/${product.image}";
+    final categoryName = product.category.toUpperCase();
+
+    final bgDecoration = isDark
+        ? BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const RadialGradient(
+              center: Alignment(0.0, -0.4),
+              radius: 1.1,
+              colors: [
+                Color(0xFF144535),
+                Color(0xFF082017),
+                Color(0xFF030D0A),
+              ],
+            ),
+            border: Border.all(
+              color: const Color(0xFF34D399).withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF052E16).withValues(alpha: 0.6),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
+            ],
+          )
+        : BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFFFFFFF),
+                Color(0xFFF0FDF4),
+                Color(0xFFDCFCE7),
+              ],
+            ),
+            border: Border.all(
+              color: const Color(0xFFA7F3D0),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 25,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          );
+
+    // Цена и баллы
+    Widget priceSection;
+    if (_promoPriceMode == 'retail') {
+      final retailPrice =
+          product.retailPrice > 0 ? product.retailPrice : product.price;
+      priceSection = Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFFF59E0B) : const Color(0xFF059669),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$retailPrice ₽',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                  ),
+                ),
+                Text(
+                  'РОЗНИЧНАЯ ЦЕНА',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    color: isDark ? const Color(0xFF451A03) : const Color(0xFFD1FAE5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F3E2E) : const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF34D399).withValues(alpha: 0.5)
+                    : const Color(0xFFA7F3D0),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
+                const SizedBox(width: 4),
+                Text(
+                  '${product.points} б.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xFFD1FAE5) : const Color(0xFF065F46),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else if (_promoPriceMode == 'partner') {
+      priceSection = Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF10B981) : const Color(0xFF047857),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${product.price} ₽',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                  ),
+                ),
+                Text(
+                  'ПАРТНЕРСКАЯ ЦЕНА',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    color: isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F3E2E) : const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF34D399).withValues(alpha: 0.5)
+                    : const Color(0xFFA7F3D0),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
+                const SizedBox(width: 4),
+                Text(
+                  '${product.points} б.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xFFD1FAE5) : const Color(0xFF065F46),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      priceSection = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF10B981).withValues(alpha: 0.2)
+              : const Color(0xFF059669),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark ? const Color(0xFF34D399) : Colors.transparent,
+          ),
+        ),
+        child: Text(
+          '💬 Цена и консультация — в ЛС',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: isDark ? const Color(0xFF6EE7B7) : Colors.white,
+          ),
+        ),
+      );
+    }
+
+    if (isSquare) {
+      // 1:1 КВАДРАТНЫЙ ПОСТ (380 x 380)
+      return Container(
+        width: 380,
+        height: 380,
+        padding: const EdgeInsets.all(16),
+        decoration: bgDecoration,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Верхняя плашка: бренд и категория
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0A231B) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF10B981),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.all_inclusive,
+                        size: 14,
+                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'INFINITY',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.0,
+                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0E3024) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF10B981).withValues(alpha: 0.4)
+                          : const Color(0xFFA7F3D0),
+                    ),
+                  ),
+                  child: Text(
+                    categoryName,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Средняя часть: Фото слева и текст справа
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Идеально скругленное фото без выпирающих краев
+                Container(
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0A221A) : Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF34D399).withValues(alpha: 0.5)
+                          : const Color(0xFFA7F3D0),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(6),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.contain,
+                        errorWidget: (c, u, e) => const Icon(
+                          Icons.shopping_bag,
+                          size: 40,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Название и тезисы пользы
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      ...bullets.map(
+                        (b) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Icon(
+                                  Icons.check_circle,
+                                  size: 13,
+                                  color: isDark
+                                      ? const Color(0xFF34D399)
+                                      : const Color(0xFF059669),
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  b,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? const Color(0xFFD1FAE5)
+                                        : const Color(0xFF334155),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // Блок цены
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                priceSection,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '100% Фитосбор',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                      ),
+                    ),
+                    Text(
+                      'Качество INFINITY',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDark
+                            ? const Color(0xFF6EE7B7)
+                            : const Color(0xFF059669),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Нижняя строка: контакты дистрибьютора
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF0A291F)
+                    : const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF1E5B45)
+                      : const Color(0xFFD1FAE5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.phone,
+                    size: 15,
+                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    phone,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.send,
+                    size: 13,
+                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    tg,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // 9:16 ВЕРТИКАЛЬНАЯ СТОРИС (320 x 568)
+      return Container(
+        width: 320,
+        height: 568,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: bgDecoration,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Верхняя плашка
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0A231B) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF10B981),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.all_inclusive,
+                        size: 15,
+                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'INFINITY',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.0,
+                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0E3024) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF10B981).withValues(alpha: 0.4)
+                          : const Color(0xFFA7F3D0),
+                    ),
+                  ),
+                  child: Text(
+                    categoryName,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Крупное фото по центру со скругленными краями
+            Container(
+              width: 170,
+              height: 170,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0A221A) : Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF34D399).withValues(alpha: 0.5)
+                      : const Color(0xFFA7F3D0),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.09),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(8),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.contain,
+                    errorWidget: (c, u, e) => const Icon(
+                      Icons.shopping_bag,
+                      size: 50,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Название товара
+            Text(
+              product.name,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+
+            // Тезисы пользы
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF09251B).withValues(alpha: 0.7)
+                    : Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF1E5B45)
+                      : const Color(0xFFA7F3D0),
+                ),
+              ),
+              child: Column(
+                children: bullets.map((b) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.5),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Icon(
+                            Icons.check_circle,
+                            size: 13,
+                            color: isDark
+                                ? const Color(0xFF34D399)
+                                : const Color(0xFF059669),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            b,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? const Color(0xFFD1FAE5)
+                                  : const Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            // Блок цены
+            Center(child: priceSection),
+
+            // Нижняя строка: контакты
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF0A291F)
+                    : const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF1E5B45)
+                      : const Color(0xFFD1FAE5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.phone,
+                    size: 14,
+                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    phone,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.send,
+                    size: 13,
+                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    tg,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _exportAndSharePromoCard() async {
+    if (_isExportingPromo) return;
+    setState(() => _isExportingPromo = true);
+
+    try {
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final boundary = _promoRepaintKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw Exception('RenderRepaintBoundary не найден');
+      }
+
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        throw Exception('Не удалось закодировать изображение в PNG');
+      }
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+
+      final product = _selectedPromoProduct ??
+          (appData.products.isNotEmpty ? appData.products.first : null);
+      final prodName = product?.name ?? 'INFINITY';
+      final shareText = '✨ Продукт: $prodName\n'
+          '📞 Заказ и консультация: ${_promoPhoneController.text.isNotEmpty ? _promoPhoneController.text : "в личные сообщения"}\n'
+          '💬 Telegram / WhatsApp: ${_promoTgController.text.isNotEmpty ? _promoTgController.text : ""}';
+
+      if (kIsWeb) {
+        final xFile = XFile.fromData(
+          pngBytes,
+          mimeType: 'image/png',
+          name: 'promo_${product?.id ?? 0}.png',
+        );
+        await Share.shareXFiles([xFile], text: shareText);
+      } else {
+        final tempDir = await getTemporaryDirectory();
+        final file = File(
+            '${tempDir.path}/promo_${product?.id ?? 0}_${DateTime.now().millisecondsSinceEpoch}.png');
+        await file.writeAsBytes(pngBytes);
+        final xFile = XFile(
+          file.path,
+          mimeType: 'image/png',
+          name: 'promo_${product?.id ?? 0}.png',
+        );
+        await Share.shareXFiles([xFile], text: shareText);
+      }
+    } catch (e) {
+      debugPrint('Ошибка при создании промо-карточки: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка создания карточки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingPromo = false);
+      }
+    }
   }
 
   Widget _buildProfileScreen() {
