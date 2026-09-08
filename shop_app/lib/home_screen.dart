@@ -42,6 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
       {}; // Хранение подарочных товаров (id -> количество)
   final int _currentAppVersion = 20; // Текущая версия этого приложения
   bool _updateDialogShown = false;
+  bool _hidePricePoints = false;
+  bool _sendRetailPrice = false;
   String _searchQuery = '';
   String _selectedCategory = 'Все';
   final TextEditingController _searchController = TextEditingController();
@@ -76,9 +78,134 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _checkSavedLogin();
+    _loadSettings();
     _loadCart();
     _loadData();
   }
+
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _hidePricePoints = prefs.getBool('hide_price_points') ?? false;
+        _sendRetailPrice = prefs.getBool('send_retail_price') ?? false;
+      });
+    } catch (e) {
+      debugPrint('Ошибка загрузки настроек: $e');
+    }
+  }
+
+  void _showSettingsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Настройки',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Card(
+                    elevation: 0,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade900
+                        : Colors.grey.shade100,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SwitchListTile(
+                          title: const Text(
+                            'Отправлять без цены и баллов',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Скрывать стоимость и баллы при отправке описания товара',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          value: _hidePricePoints,
+                          activeColor: Colors.green,
+                          onChanged: (bool value) async {
+                            setModalState(() {
+                              _hidePricePoints = value;
+                              if (value) _sendRetailPrice = false;
+                            });
+                            setState(() {
+                              _hidePricePoints = value;
+                              if (value) _sendRetailPrice = false;
+                            });
+                            try {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool('hide_price_points', value);
+                              if (value) await prefs.setBool('send_retail_price', false);
+                            } catch (e) {
+                              debugPrint('Ошибка сохранения настроек: $e');
+                            }
+                          },
+                        ),
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                        SwitchListTile(
+                          title: const Text(
+                            'Отправлять с розничной ценой',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'При отправке указывать розничную цену вместо партнерской',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          value: _sendRetailPrice,
+                          activeColor: Colors.green,
+                          onChanged: (bool value) async {
+                            setModalState(() {
+                              _sendRetailPrice = value;
+                              if (value) _hidePricePoints = false;
+                            });
+                            setState(() {
+                              _sendRetailPrice = value;
+                              if (value) _hidePricePoints = false;
+                            });
+                            try {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool('send_retail_price', value);
+                              if (value) await prefs.setBool('hide_price_points', false);
+                            } catch (e) {
+                              debugPrint('Ошибка сохранения настроек: $e');
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
 
   Future<void> _checkSavedLogin() async {
     try {
@@ -577,6 +704,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => _showSettingsBottomSheet(context),
+          ),
           ValueListenableBuilder<ThemeMode>(
             valueListenable: themeNotifier,
             builder: (context, currentMode, child) {

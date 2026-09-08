@@ -1,10 +1,8 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
 
@@ -34,6 +32,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   late ScrollController _scrollController;
   double _scrollOffset = 0.0;
+  bool _hidePricePoints = false;
+  bool _sendRetailPrice = false;
 
   @override
   void initState() {
@@ -44,6 +44,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           _scrollOffset = _scrollController.offset;
         });
       });
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _hidePricePoints = prefs.getBool('hide_price_points') ?? false;
+        _sendRetailPrice = prefs.getBool('send_retail_price') ?? false;
+      });
+    } catch (e) {
+      debugPrint('Ошибка загрузки настроек: $e');
+    }
   }
 
   @override
@@ -421,11 +434,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget _buildBadges(BuildContext context) {
     return Wrap(
       alignment: WrapAlignment.center,
-      spacing: 16,
+      spacing: 12,
       runSpacing: 12,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.blue.withOpacity(0.06),
             borderRadius: BorderRadius.circular(16),
@@ -441,9 +454,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                '${widget.product.price} ₽',
+                '${widget.product.price} ₽ (партнер)',
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.blue,
                 ),
@@ -451,8 +464,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ],
           ),
         ),
+        if (widget.product.retailPrice > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.teal.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.teal.withOpacity(0.2), width: 1.5),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.storefront_outlined,
+                  color: Colors.teal,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${widget.product.retailPrice} ₽ (розница)',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal,
+                  ),
+                ),
+              ],
+            ),
+          ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.orange.withOpacity(0.06),
             borderRadius: BorderRadius.circular(16),
@@ -469,7 +510,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Text(
                 '${widget.product.points} баллов',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.orange.shade800,
                 ),
@@ -810,8 +851,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             .toList();
 
     final imageUrl = "$_imageBaseUrl${widget.product.image}";
+    final String priceLine;
+    final String pointsLine;
+    if (_hidePricePoints) {
+      priceLine = '';
+      pointsLine = '';
+    } else if (_sendRetailPrice && widget.product.retailPrice > 0) {
+      priceLine = '💰 Цена: ${widget.product.retailPrice} ₽\n';
+      pointsLine = '';
+    } else {
+      priceLine = '💰 Цена: ${widget.product.price} ₽\n';
+      pointsLine = '⭐ Баллы: ${widget.product.points}\n';
+    }
+    final String separator = (_hidePricePoints || priceLine.isEmpty) ? '\n' : '';
+
     final shareText =
-        '📦 ${widget.product.name}\n💰 Цена: ${widget.product.price} ₽\n⭐ Баллы: ${widget.product.points}\n\n📝 Описание:\n${widget.product.description}';
+        '📦 ${widget.product.name}\n$priceLine$pointsLine$separator📝 Описание:\n${widget.product.description}';
 
     final parsedSections = _parseDescription(
       widget.product.description,

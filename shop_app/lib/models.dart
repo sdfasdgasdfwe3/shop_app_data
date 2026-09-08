@@ -65,6 +65,7 @@ class Product {
   final int price;
   final int points;
   final String category;
+  final int retailPrice;
 
   Product({
     required this.id,
@@ -74,6 +75,7 @@ class Product {
     required this.price,
     required this.points,
     required this.category,
+    this.retailPrice = 0,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -85,6 +87,7 @@ class Product {
       price: json['price'] ?? 0,
       points: json['points'] ?? json['price'] ?? 0, // Fallback на старую цену
       category: json['category'] ?? '',
+      retailPrice: json['retail_price'] ?? json['retailPrice'] ?? json['price'] ?? 0,
     );
   }
 
@@ -97,6 +100,7 @@ class Product {
       'price': price,
       'points': points,
       'category': category,
+      'retail_price': retailPrice,
     };
   }
 }
