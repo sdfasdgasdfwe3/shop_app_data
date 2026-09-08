@@ -79,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Переменные для раздела «Именное» (генератор промо-карточек)
   final TextEditingController _promoPhoneController = TextEditingController();
-  final TextEditingController _promoTgController = TextEditingController();
   Product? _selectedPromoProduct;
   String _promoFormat = 'square'; // 'square' (1:1), 'story' (9:16)
   String _promoTheme = 'dark'; // 'dark' (Изумруд), 'light' (Эко)
@@ -103,7 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _hidePricePoints = prefs.getBool('hide_price_points') ?? false;
         _sendRetailPrice = prefs.getBool('send_retail_price') ?? false;
         _promoPhoneController.text = prefs.getString('custom_promo_phone') ?? '';
-        _promoTgController.text = prefs.getString('custom_promo_tg') ?? '';
         _promoFormat = prefs.getString('custom_promo_format') ?? 'square';
         _promoTheme = prefs.getString('custom_promo_theme') ?? 'dark';
         _promoPriceMode = prefs.getString('custom_promo_price_mode') ?? 'retail';
@@ -117,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('custom_promo_phone', _promoPhoneController.text);
-      await prefs.setString('custom_promo_tg', _promoTgController.text);
       await prefs.setString('custom_promo_format', _promoFormat);
       await prefs.setString('custom_promo_theme', _promoTheme);
       await prefs.setString('custom_promo_price_mode', _promoPriceMode);
@@ -502,7 +499,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _adminContentController.dispose();
     _adminImageController.dispose();
     _promoPhoneController.dispose();
-    _promoTgController.dispose();
     super.dispose();
   }
 
@@ -1573,74 +1569,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _selectedPromoProduct ??= appData.products.first;
     final product = _selectedPromoProduct!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 120),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Приветственный баннер раздела
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF0F3628), const Color(0xFF082017)]
-                    : [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark
-                    ? const Color(0xFF34D399).withValues(alpha: 0.3)
-                    : const Color(0xFFA7F3D0),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome,
-                    color: Color(0xFF10B981),
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Именные промо-карточки',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF065F46),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Генерируйте карточки для Telegram и WhatsApp с вашими личными контактами для заказов',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark
-                              ? Colors.grey.shade300
-                              : const Color(0xFF047857),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
           // Карточка 1: Личные контакты дистрибьютора
           Card(
             elevation: 0,
@@ -1670,29 +1604,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     controller: _promoPhoneController,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      labelText: 'Ваш номер телефона',
-                      hintText: '+7 (999) 000-00-00',
+                      labelText: 'Ваш номер телефона для заказа и консультации',
+                      hintText: '+7 (999) 777-22-33',
                       prefixIcon: const Icon(Icons.phone_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                    ),
-                    onChanged: (_) {
-                      setState(() {});
-                      _savePromoSettings();
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _promoTgController,
-                    decoration: InputDecoration(
-                      labelText: 'Telegram / WhatsApp контакт',
-                      hintText: '@username или ссылка',
-                      prefixIcon: const Icon(Icons.send_outlined),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -1985,7 +1899,7 @@ class _HomeScreenState extends State<HomeScreen> {
               label: Text(
                 _isExportingPromo
                     ? 'Формирование изображения...'
-                    : 'Поделиться карточкой в Telegram / WhatsApp',
+                    : 'Поделиться промо-карточкой',
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
             ),
@@ -1997,46 +1911,95 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<String> _extractPromoBullets(Product product) {
-    final lines = product.description
-        .split('\n')
-        .map((l) => l.trim())
-        .where((l) =>
-            l.isNotEmpty &&
-            !l.startsWith('Состав:') &&
-            !l.startsWith('Рекомендации') &&
-            !l.startsWith('Активные') &&
-            !l.startsWith('Полезные свойства'))
-        .toList();
+    final desc = product.description;
+    final lines = desc.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
 
     List<String> bullets = [];
+
     for (var l in lines) {
-      String cleaned = l;
-      if (cleaned.startsWith('•') ||
-          cleaned.startsWith('-') ||
-          cleaned.startsWith('+') ||
-          cleaned.startsWith('«')) {
-        cleaned = cleaned.replaceAll(RegExp(r'^[•\-\+«]+'), '').trim();
+      final lower = l.toLowerCase();
+      if (lower.startsWith('состав:') ||
+          lower.startsWith('состав') ||
+          lower.startsWith('активные компоненты:') ||
+          lower.startsWith('полезные свойства') ||
+          lower.startsWith('рекомендации') ||
+          lower.startsWith('способ применения') ||
+          lower.startsWith('противопоказания') ||
+          lower.startsWith('условия хранения') ||
+          lower.startsWith('срок годности') ||
+          lower.startsWith('масса') ||
+          lower.startsWith('объем') ||
+          lower.startsWith('форма выпуска')) {
+        continue;
       }
-      if (cleaned.contains('—')) {
-        cleaned = cleaned.split('—').first.trim();
-      } else if (cleaned.contains(':') && !cleaned.contains('http')) {
-        cleaned = cleaned.split(':').first.trim();
-      }
-      if (cleaned.length > 5 && cleaned.length < 55 && !bullets.contains(cleaned)) {
-        bullets.add(cleaned);
+
+      // Разбиваем абзац на отдельные предложения
+      final sentences = l.split(RegExp(r'(?<=[.;!])\s+'));
+      for (var rawSentence in sentences) {
+        String s = rawSentence.trim();
+        s = s.replaceAll(RegExp(r'^[•\-\+«\*\d\.\)\s]+'), '').trim();
+        s = s.replaceAll('«', '').replaceAll('»', '').replaceAll('"', '');
+
+        // Убираем повторение имени продукта в начале
+        s = s.replaceAll(RegExp(r'^(Крем Ведария|Сироп|Чайный напиток|Фитосбор|БАЛАНС ИНФИНИТИ|СУСТАКАПС|ИММУНОКАПС|ДИАБЕТУ НЕТ|АНДРОКАПС|РЕЛАКС|КАРДИОКАПС|БРОНХОКАПС)\s*(\d+\s*шт|\d+\s*капс|\d+\s*мл|\d+\s*г)?\s*', caseSensitive: false), '').trim();
+        s = s.replaceAll(RegExp(r'[.;!]+$'), '').trim();
+
+        final sLower = s.toLowerCase();
+        if (sLower.contains('состав') ||
+            sLower.contains('курс приема') ||
+            sLower.contains('противопоказан') ||
+            sLower.contains('хранить') ||
+            sLower.contains('годен') ||
+            sLower.contains('внутрь') ||
+            sLower.contains('в сухом') ||
+            sLower.contains('особенно для людей') ||
+            sLower.contains('применяют для того')) {
+          continue;
+        }
+
+        if (s.contains('—')) {
+          final p = s.split('—');
+          s = '${p[0].trim()}: ${p[1].trim()}';
+        } else if (s.contains(' - ')) {
+          final p = s.split(' - ');
+          s = '${p[0].trim()}: ${p[1].trim()}';
+        }
+
+        s = s.replaceAll('дает мощный', 'обеспечивает');
+        s = s.replaceAll('самый насыщенный и комплексный по составу крем, который является эффективным средством, как при', 'Эффективен при');
+        s = s.replaceAll('является эффективным средством, как при', 'Эффективен при');
+
+        if (s.length > 52 && s.contains(',')) {
+          final parts = s.split(',');
+          if (parts[0].trim().length >= 15) {
+            s = parts[0].trim();
+          }
+        }
+
+        if (s.isNotEmpty && s[0].toLowerCase() == s[0]) {
+          s = s[0].toUpperCase() + s.substring(1);
+        }
+
+        if (s.length >= 12 && s.length <= 55 && !bullets.contains(s)) {
+          bullets.add(s);
+        }
+        if (bullets.length >= 3) break;
       }
       if (bullets.length >= 3) break;
     }
 
-    if (bullets.isEmpty) {
-      bullets = [
-        '100% Натуральный природный фитокомплекс',
-        'Высокая биодоступность активных веществ',
-        'Комплексная поддержка и защита организма',
-      ];
-    } else if (bullets.length < 3) {
-      bullets.add('Гарантия подлинности и качества');
+    // Если предложений не хватило, берем смысловые части из описания
+    if (bullets.length < 3) {
+      for (var l in lines) {
+        String s = l.replaceAll(RegExp(r'^[•\-\+«\*\d\.\)\s]+'), '').trim();
+        if (s.contains(',')) s = s.split(',')[0].trim();
+        if (s.length >= 10 && s.length <= 50 && !bullets.contains(s)) {
+          bullets.add(s);
+        }
+        if (bullets.length >= 3) break;
+      }
     }
+
     return bullets.take(3).toList();
   }
 
@@ -2046,9 +2009,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final phone = _promoPhoneController.text.isNotEmpty
         ? _promoPhoneController.text
         : '+7 (999) 777-22-33';
-    final tg = _promoTgController.text.isNotEmpty
-        ? _promoTgController.text
-        : '@infinity_partner';
     final bullets = _extractPromoBullets(product);
     final imageUrl = "${dataManager.repoUrl}/images/${product.image}";
     final categoryName = product.category.toUpperCase();
@@ -2101,135 +2061,115 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           );
 
-    // Цена и баллы
+    // Цена и баллы (гармоничные блоки одинаковой высоты)
     Widget priceSection;
-    if (_promoPriceMode == 'retail') {
-      final retailPrice =
-          product.retailPrice > 0 ? product.retailPrice : product.price;
-      priceSection = Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFFF59E0B) : const Color(0xFF059669),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$retailPrice ₽',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
+    if (_promoPriceMode == 'retail' || _promoPriceMode == 'partner') {
+      final isRetail = _promoPriceMode == 'retail';
+      final priceVal = isRetail
+          ? (product.retailPrice > 0 ? product.retailPrice : product.price)
+          : product.price;
+      final priceLabel = isRetail ? 'РОЗНИЧНАЯ ЦЕНА' : 'ПАРТНЕРСКАЯ ЦЕНА';
+
+      final priceBg = isRetail
+          ? (isDark ? const Color(0xFFF59E0B) : const Color(0xFF059669))
+          : (isDark ? const Color(0xFF10B981) : const Color(0xFF047857));
+
+      final priceTextColor = isRetail
+          ? (isDark ? const Color(0xFF0F172A) : Colors.white)
+          : (isDark ? const Color(0xFF0F172A) : Colors.white);
+
+      final priceSubColor = isRetail
+          ? (isDark ? const Color(0xFF451A03) : const Color(0xFFD1FAE5))
+          : (isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5));
+
+      final pointsBg = isDark ? const Color(0xFF0E382A) : const Color(0xFFF0FDF4);
+      final pointsBorder = isDark
+          ? const Color(0xFF34D399).withValues(alpha: 0.5)
+          : const Color(0xFFA7F3D0);
+      final pointsTextColor = isDark ? const Color(0xFFD1FAE5) : const Color(0xFF065F46);
+
+      priceSection = IntrinsicHeight(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Блок цены
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: priceBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$priceVal ₽',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: priceTextColor,
+                    ),
                   ),
-                ),
-                Text(
-                  'РОЗНИЧНАЯ ЦЕНА',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    color: isDark ? const Color(0xFF451A03) : const Color(0xFFD1FAE5),
+                  const SizedBox(height: 2),
+                  Text(
+                    priceLabel,
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: priceSubColor,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F3E2E) : const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark
-                    ? const Color(0xFF34D399).withValues(alpha: 0.5)
-                    : const Color(0xFFA7F3D0),
+                ],
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
-                const SizedBox(width: 4),
-                Text(
-                  '${product.points} б.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? const Color(0xFFD1FAE5) : const Color(0xFF065F46),
+            const SizedBox(width: 8),
+            // Блок баллов (идеально совпадает по высоте и стилю)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: pointsBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: pointsBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${product.points}',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: pointsTextColor,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    } else if (_promoPriceMode == 'partner') {
-      priceSection = Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF10B981) : const Color(0xFF047857),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${product.price} ₽',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                  const SizedBox(height: 2),
+                  Text(
+                    'БАЛЛОВ',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: pointsTextColor.withValues(alpha: 0.8),
+                    ),
                   ),
-                ),
-                Text(
-                  'ПАРТНЕРСКАЯ ЦЕНА',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    color: isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F3E2E) : const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark
-                    ? const Color(0xFF34D399).withValues(alpha: 0.5)
-                    : const Color(0xFFA7F3D0),
+                ],
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
-                const SizedBox(width: 4),
-                Text(
-                  '${product.points} б.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? const Color(0xFFD1FAE5) : const Color(0xFF065F46),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       );
     } else {
       priceSection = Container(
@@ -2255,11 +2195,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (isSquare) {
-      // 1:1 КВАДРАТНЫЙ ПОСТ (380 x 380)
+      // 1:1 КВАДРАТНЫЙ ПОСТ (400 x 400)
       return Container(
-        width: 380,
-        height: 380,
-        padding: const EdgeInsets.all(16),
+        width: 400,
+        height: 400,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: bgDecoration,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2326,10 +2266,10 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Идеально скругленное фото без выпирающих краев
+                // Скругленное фото товара
                 Container(
-                  width: 130,
-                  height: 130,
+                  width: 112,
+                  height: 112,
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF0A221A) : Colors.white,
                     borderRadius: BorderRadius.circular(18),
@@ -2377,8 +2317,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w900,
+                          height: 1.2,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
                         ),
                       ),
@@ -2399,14 +2340,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                       : const Color(0xFF059669),
                                 ),
                               ),
-                              const SizedBox(width: 5),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   b,
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10.5,
+                                    height: 1.25,
                                     fontWeight: FontWeight.w600,
                                     color: isDark
                                         ? const Color(0xFFD1FAE5)
@@ -2424,38 +2366,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            // Блок цены
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                priceSection,
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '100% Фитосбор',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
-                      ),
-                    ),
-                    Text(
-                      'Качество INFINITY',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isDark
-                            ? const Color(0xFF6EE7B7)
-                            : const Color(0xFF059669),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            // Блок цены (по центру)
+            Center(child: priceSection),
 
-            // Нижняя строка: контакты дистрибьютора
+            // Нижняя строка: контакты для заказа и консультации
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
@@ -2470,34 +2384,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.phone,
                     size: 15,
                     color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ЗАКАЗ И КОНСУЛЬТАЦИЯ: ',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                      color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                    ),
+                  ),
                   Text(
                     phone,
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    Icons.send,
-                    size: 13,
-                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    tg,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                     ),
                   ),
                 ],
@@ -2682,7 +2592,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Нижняя строка: контакты
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isDark
                     ? const Color(0xFF0A291F)
@@ -2695,34 +2605,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.phone,
-                    size: 14,
+                    size: 15,
                     color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                   ),
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ЗАКАЗ И КОНСУЛЬТАЦИЯ: ',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                      color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                    ),
+                  ),
                   Text(
                     phone,
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    Icons.send,
-                    size: 13,
-                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    tg,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                     ),
                   ),
                 ],
@@ -2759,8 +2665,7 @@ class _HomeScreenState extends State<HomeScreen> {
           (appData.products.isNotEmpty ? appData.products.first : null);
       final prodName = product?.name ?? 'INFINITY';
       final shareText = '✨ Продукт: $prodName\n'
-          '📞 Заказ и консультация: ${_promoPhoneController.text.isNotEmpty ? _promoPhoneController.text : "в личные сообщения"}\n'
-          '💬 Telegram / WhatsApp: ${_promoTgController.text.isNotEmpty ? _promoTgController.text : ""}';
+          '📞 Заказ и консультация: ${_promoPhoneController.text.isNotEmpty ? _promoPhoneController.text : "+7 (999) 777-22-33"}';
 
       if (kIsWeb) {
         final xFile = XFile.fromData(
