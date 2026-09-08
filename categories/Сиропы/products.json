@@ -8,7 +8,8 @@
       "image": "balans.png",
       "price": 4400,
       "points": 2800,
-      "category": "Сиропы"
+      "category": "Сиропы",
+      "retail_price": 5720
     },
     {
       "id": 29,
@@ -131,5 +132,5 @@
       "retail_price": 1320
     }
   ],
-  "updated": "2026-09-08T22:04:57.137Z"
+  "updated": "2026-09-08T22:14:56.262Z"
 }

@@ -955,31 +955,34 @@ class _HomeScreenState extends State<HomeScreen> {
             childAspectRatio: 0.44,
             itemBuilder: (product) {
               final imageUrl = "${dataManager.repoUrl}/images/${product.image}";
-              return ItemCard(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProductDetailScreen(
-                        product: product,
-                        allProducts: appData.products,
-                        getCartQuantity: (id) => _cart[id.toString()] ?? 0,
-                        onIncrement: (id) => _addToCart(id, showSnackbar: true),
-                        onDecrement: (id) => _removeFromCart(id),
+                final displayPrice = (_sendRetailPrice && product.retailPrice > 0)
+                    ? product.retailPrice
+                    : product.price;
+                return ItemCard(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProductDetailScreen(
+                          product: product,
+                          allProducts: appData.products,
+                          getCartQuantity: (id) => _cart[id.toString()] ?? 0,
+                          onIncrement: (id) => _addToCart(id, showSnackbar: true),
+                          onDecrement: (id) => _removeFromCart(id),
+                        ),
                       ),
-                    ),
-                  );
-                },
-                imageUrl: imageUrl,
-                placeholderIcon: Icons.shopping_bag,
-                title: product.name,
-                description: product.description,
-                priceText: '${product.price} ₽',
-                pointsText: '${product.points} баллов',
-                cartQuantity: _cart[product.id.toString()] ?? 0,
-                onIncrement: () => _addToCart(product.id),
-                onDecrement: () => _removeFromCart(product.id),
-              );
+                    );
+                  },
+                  imageUrl: imageUrl,
+                  placeholderIcon: Icons.shopping_bag,
+                  title: product.name,
+                  description: product.description,
+                  priceText: '$displayPrice ₽',
+                  pointsText: '${product.points} баллов',
+                  cartQuantity: _cart[product.id.toString()] ?? 0,
+                  onIncrement: () => _addToCart(product.id),
+                  onDecrement: () => _removeFromCart(product.id),
+                );
             },
           ),
         ],
@@ -1161,7 +1164,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (product.id != -1) {
-        totalPrice += product.price * paidQty;
+        final int currentPrice = (_sendRetailPrice && product.retailPrice > 0)
+            ? product.retailPrice
+            : product.price;
+        totalPrice += currentPrice * paidQty;
         totalPoints += product.points * paidQty;
         cartItems.add(
           Card(
@@ -1201,7 +1207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${product.price} ₽ x $paidQty = ${product.price * paidQty} ₽',
+                          '$currentPrice ₽ x $paidQty = ${currentPrice * paidQty} ₽',
                           style: const TextStyle(
                             color: Colors.blue,
                             fontWeight: FontWeight.bold,

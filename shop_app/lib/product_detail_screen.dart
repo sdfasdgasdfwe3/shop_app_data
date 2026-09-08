@@ -432,6 +432,75 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildBadges(BuildContext context) {
+    if (_sendRetailPrice) {
+      final int retailPrice = widget.product.retailPrice > 0
+          ? widget.product.retailPrice
+          : widget.product.price;
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.teal.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.teal.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.local_offer_outlined,
+                  color: Colors.teal,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$retailPrice ₽',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.orange.withOpacity(0.2),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.stars_rounded, color: Colors.orange, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  '${widget.product.points} баллов',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 12,
@@ -858,7 +927,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       pointsLine = '';
     } else if (_sendRetailPrice && widget.product.retailPrice > 0) {
       priceLine = '💰 Цена: ${widget.product.retailPrice} ₽\n';
-      pointsLine = '';
+      pointsLine = '⭐ Баллы: ${widget.product.points}\n';
     } else {
       priceLine = '💰 Цена: ${widget.product.price} ₽\n';
       pointsLine = '⭐ Баллы: ${widget.product.points}\n';

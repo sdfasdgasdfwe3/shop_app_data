@@ -10,6 +10,7 @@ git add data.json
 git add version.json
 git add update.bat
 if exist images\ git add images\
+if exist categories\ git add categories\
 if exist shop_app\ git add shop_app\
 
 rem Remove admin.html from GitHub if it was pushed before
