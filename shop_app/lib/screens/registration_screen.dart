@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/infinity_auth_service.dart';
@@ -80,6 +81,24 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   // --- АВТОМАТИЗАЦИЯ: Регистрация через Temp-Mail в 1 клик ---
   Future<void> _handleAutoTempMail() async {
+    if (kIsWeb) {
+      await launchUrl(
+        Uri.parse('https://temp-mail.io/ru/'),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Сервис Temp-Mail.io открыт в новой вкладке! Скопируйте созданный email и вставьте в поле ниже.',
+          ),
+          backgroundColor: Color(0xFF2563EB),
+          duration: Duration(seconds: 6),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _isAutoMode = true;
@@ -345,7 +364,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             children: [
               // Верхний логотип / заголовок
               _buildHeader(theme),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // Уведомление для Web-версии
+              if (kIsWeb) _buildWebNotice(theme),
 
               // Индикатор шагов (1 - 2 - 3)
               if (_currentStep < 4) _buildStepProgress(theme),
@@ -453,6 +475,104 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Информационный блок для браузерной версии (GitHub Pages)
+  Widget _buildWebNotice(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.hub_outlined, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Быстрый доступ к сервисам Инфинити',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFF065F46),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'В браузере для моментальной регистрации партнёра рекомендуем открыть официальную форму сайта и сервис временной почты:',
+            style: TextStyle(fontSize: 12.5, color: Color(0xFF047857), height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  launchUrl(
+                    Uri.parse('https://infinity-mlm.com/user/registrationemailconfirm?AliasName='),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF059669),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: const Text(
+                  'Сайт Инфинити (Регистрация)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  launchUrl(
+                    Uri.parse('https://temp-mail.io/ru/'),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF0F766E),
+                  side: const BorderSide(color: Color(0xFF0F766E)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.mark_email_read_outlined, size: 16),
+                label: const Text(
+                  'Temp-Mail.io (Временная почта)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -637,7 +757,31 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    launchUrl(
+                      Uri.parse('https://temp-mail.io/ru/'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                  icon: const Icon(Icons.mark_email_read_outlined,
+                      size: 15, color: Color(0xFF0F766E)),
+                  label: const Text(
+                    'Получить временную почту на Temp-Mail.io',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF0F766E),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
 
             // Спонсор (необязательно)
             TextField(
@@ -838,6 +982,34 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                 ],
               ],
+            ),
+            const SizedBox(height: 12),
+
+            // Кнопка быстрого перехода в Temp-Mail
+            OutlinedButton.icon(
+              onPressed: () {
+                launchUrl(
+                  Uri.parse('https://temp-mail.io/ru/'),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+              icon: const Icon(Icons.mark_email_read_outlined,
+                  size: 16, color: Color(0xFF0F766E)),
+              label: const Text(
+                'Проверить входящие на Temp-Mail.io',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F766E),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF0F766E)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
             const SizedBox(height: 14),
 

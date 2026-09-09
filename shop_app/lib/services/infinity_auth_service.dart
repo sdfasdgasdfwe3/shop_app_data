@@ -28,12 +28,20 @@ class InfinityAuthService {
   void _extractCookies(http.Response response) {
     final rawCookie = response.headers['set-cookie'];
     if (rawCookie != null && rawCookie.isNotEmpty) {
-      final parts = rawCookie.split(',');
-      for (final part in parts) {
-        final cookie = part.split(';').first.trim();
-        if (cookie.contains('=')) {
-          final kv = cookie.split('=');
-          _cookies[kv[0].trim()] = kv.sublist(1).join('=').trim();
+      final matches = RegExp(r'(?:^|,)\s*([a-zA-Z0-9_\-\.]+)=([^;,\s]+)')
+          .allMatches(rawCookie);
+      for (final m in matches) {
+        final key = m.group(1);
+        final val = m.group(2);
+        if (key != null && val != null) {
+          final lower = key.toLowerCase();
+          if (lower != 'expires' &&
+              lower != 'path' &&
+              lower != 'domain' &&
+              lower != 'samesite' &&
+              lower != 'max-age') {
+            _cookies[key] = val;
+          }
         }
       }
     }
@@ -41,15 +49,17 @@ class InfinityAuthService {
 
   Map<String, String> _buildHeaders() {
     final headers = <String, String>{
-      'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'X-Requested-With': 'XMLHttpRequest',
       'Accept': 'application/json, text/javascript, */*; q=0.01',
-      'Referer': '$baseUrl/user/registrationemailconfirm?AliasName=',
     };
-    if (_cookies.isNotEmpty) {
-      headers['Cookie'] =
-          _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+    if (!kIsWeb) {
+      headers['User-Agent'] =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      headers['X-Requested-With'] = 'XMLHttpRequest';
+      headers['Referer'] = '$baseUrl/user/registrationemailconfirm?AliasName=';
+      if (_cookies.isNotEmpty) {
+        headers['Cookie'] =
+            _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+      }
     }
     return headers;
   }
@@ -168,12 +178,10 @@ class InfinityAuthService {
       }
     } catch (e) {
       if (kIsWeb) {
-        // В браузере прямой вызов блокируется CORS
         return InfinityAuthResult(
-          success: true,
+          success: false,
           message:
-              'В веб-версии запрос отправлен. Если почта открыта на сайте Инфинити, введите полученный код.',
-          guid: 'WEB-SESSION-${DateTime.now().millisecondsSinceEpoch}',
+              'В веб-версии (браузер) запрос к серверу Инфинити блокируется защитой CORS. Воспользуйтесь официальной формой регистрации на сайте Инфинити или мобильным приложением Android.',
         );
       }
       return InfinityAuthResult(
@@ -201,14 +209,6 @@ class InfinityAuthService {
     };
 
     try {
-      if (kIsWeb && guid.startsWith('WEB-SESSION-')) {
-        return InfinityAuthResult(
-          success: true,
-          message: 'Код подтвержден',
-          guid: guid,
-        );
-      }
-
       final targetUri = Uri.parse('$baseUrl/user/pinscheck')
           .replace(queryParameters: queryParams);
 
@@ -244,9 +244,9 @@ class InfinityAuthService {
     } catch (e) {
       if (kIsWeb) {
         return InfinityAuthResult(
-          success: true,
-          message: 'Код принят',
-          guid: guid,
+          success: false,
+          message:
+              'В веб-версии (браузер) проверка кода блокируется политикой CORS. Пожалуйста, завершите регистрацию на официальном сайте Инфинити.',
         );
       }
       return InfinityAuthResult(
@@ -278,14 +278,6 @@ class InfinityAuthService {
     };
 
     try {
-      if (kIsWeb && guid.startsWith('WEB-SESSION-')) {
-        return InfinityAuthResult(
-          success: true,
-          message: 'Аккаунт партнёра $email успешно создан!',
-          guid: guid,
-        );
-      }
-
       final uri = Uri.parse('$baseUrl/catalogue/cartlogin');
       final response = await http
           .post(
@@ -331,9 +323,9 @@ class InfinityAuthService {
     } catch (e) {
       if (kIsWeb) {
         return InfinityAuthResult(
-          success: true,
-          message: 'Аккаунт партнёра $email успешно создан!',
-          guid: guid,
+          success: false,
+          message:
+              'В веб-версии завершите регистрацию на официальном сайте Инфинити.',
         );
       }
       return InfinityAuthResult(
