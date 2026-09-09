@@ -350,7 +350,7 @@ class PromoCardWidget extends StatelessWidget {
             const SizedBox(width: 8),
             // Блок баллов
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
               decoration: BoxDecoration(
                 color: pointsBg,
                 borderRadius: BorderRadius.circular(14),
@@ -361,30 +361,35 @@ class PromoCardWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Text(
+                    '${product.points}',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: pointsTextColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
                   Row(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 11,
+                        color: Color(0xFFF59E0B),
+                      ),
                       const SizedBox(width: 3),
                       Text(
-                        '${product.points}',
+                        'БАЛЛОВ',
                         style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                          color: pointsTextColor,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                          color: pointsTextColor.withValues(alpha: 0.85),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'БАЛЛОВ',
-                    style: TextStyle(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                      color: pointsTextColor.withValues(alpha: 0.8),
-                    ),
                   ),
                 ],
               ),
@@ -610,34 +615,38 @@ class PromoCardWidget extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: contactBoxBorder),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.phone,
-                    size: 15,
-                    color: contactIconColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'ЗАКАЗ И КОНСУЛЬТАЦИЯ: ',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                      color: contactLabelColor,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.phone,
+                      size: 15,
+                      color: contactIconColor,
                     ),
-                  ),
-                  Text(
-                    contactPhone,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                      color: contactPhoneColor,
+                    const SizedBox(width: 8),
+                    Text(
+                      'ЗАКАЗ И КОНСУЛЬТАЦИЯ: ',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                        color: contactLabelColor,
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      contactPhone,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        color: contactPhoneColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -803,40 +812,44 @@ class PromoCardWidget extends StatelessWidget {
 
             // Нижняя строка: контакты
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: contactBoxBg,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: contactBoxBorder),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.phone,
-                    size: 15,
-                    color: contactIconColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'ЗАКАЗ И КОНСУЛЬТАЦИЯ: ',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                      color: contactLabelColor,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.phone,
+                      size: 14,
+                      color: contactIconColor,
                     ),
-                  ),
-                  Text(
-                    contactPhone,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                      color: contactPhoneColor,
+                    const SizedBox(width: 7),
+                    Text(
+                      'ЗАКАЗ И КОНСУЛЬТАЦИЯ: ',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                        color: contactLabelColor,
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      contactPhone,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.3,
+                        color: contactPhoneColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
