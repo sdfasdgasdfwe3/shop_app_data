@@ -14,7 +14,6 @@ import 'models.dart';
 import 'screens/tabs/articles_tab.dart';
 import 'screens/tabs/cart_tab.dart';
 import 'screens/tabs/catalog_tab.dart';
-import 'screens/tabs/profile_tab.dart';
 import 'screens/tabs/promo_tab.dart';
 import 'screens/tabs/reviews_tab.dart';
 import 'widgets/settings_bottom_sheet.dart';
@@ -47,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Авторизация
   bool _isLoggedIn = false;
-  String _currentUser = '';
 
   String get _githubToken {
     final String reversedBase64 =
@@ -89,29 +87,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (savedUser != null && savedUser.isNotEmpty && mounted) {
         setState(() {
           _isLoggedIn = true;
-          _currentUser = savedUser;
         });
       }
     } catch (e) {
       debugPrint('Ошибка проверки сохраненного логина: $e');
-    }
-  }
-
-  Future<void> _saveLogin(String username) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('saved_auth_user', username);
-    } catch (e) {
-      debugPrint('Ошибка сохранения логина: $e');
-    }
-  }
-
-  Future<void> _clearSavedLogin() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('saved_auth_user');
-    } catch (e) {
-      debugPrint('Ошибка удаления сохраненного логина: $e');
     }
   }
 
@@ -401,47 +380,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _hidePricePoints = newHide;
           _sendRetailPrice = newRetail;
         });
-      },
-      onOpenAdmin: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (ctx) => Scaffold(
-              appBar: AppBar(
-                title: const Text('Панель администратора'),
-              ),
-              body: ProfileTab(
-                isLoggedIn: _isLoggedIn,
-                currentUser: _currentUser,
-                appData: appData,
-                userData: userData,
-                dataManager: dataManager,
-                githubToken: _githubToken,
-                onLogin: (user, rememberMe) {
-                  setState(() {
-                    _isLoggedIn = true;
-                    _currentUser = user;
-                  });
-                  if (rememberMe) {
-                    _saveLogin(user);
-                  } else {
-                    _clearSavedLogin();
-                  }
-                },
-                onLogout: () {
-                  setState(() {
-                    _isLoggedIn = false;
-                    _currentUser = '';
-                  });
-                  _clearSavedLogin();
-                },
-                onUserDataChanged: () {
-                  setState(() {});
-                },
-              ),
-            ),
-          ),
-        );
       },
     );
   }
