@@ -28,6 +28,8 @@ class PromoCardWidget extends StatelessWidget {
     final contactPhone = phone.isNotEmpty ? phone : '+7 (999) 777-22-33';
     final imageUrl = "$repoUrl/images/${product.image}";
     final categoryName = product.category.toUpperCase();
+    final isBalans = product.image.toLowerCase().contains('balans') ||
+        product.name.toLowerCase().contains('баланс');
 
     // Цветовая палитра темы
     final BoxDecoration bgDecoration;
@@ -508,7 +510,7 @@ class PromoCardWidget extends StatelessWidget {
                   width: 114,
                   height: 114,
                   decoration: BoxDecoration(
-                    color: photoFrameBg,
+                    color: isBalans ? Colors.white : photoFrameBg,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: photoFrameBorder,
@@ -524,13 +526,19 @@ class PromoCardWidget extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      errorWidget: (c, u, e) => const Icon(
-                        Icons.shopping_bag,
-                        size: 40,
-                        color: Colors.grey,
+                    child: Container(
+                      color: isBalans ? Colors.white : Colors.transparent,
+                      padding: isBalans
+                          ? const EdgeInsets.all(4)
+                          : EdgeInsets.zero,
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: isBalans ? BoxFit.contain : BoxFit.cover,
+                        errorWidget: (c, u, e) => const Icon(
+                          Icons.shopping_bag,
+                          size: 40,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ),
@@ -702,7 +710,7 @@ class PromoCardWidget extends StatelessWidget {
               width: 220,
               height: 155,
               decoration: BoxDecoration(
-                color: photoFrameBg,
+                color: isBalans ? Colors.white : photoFrameBg,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: photoFrameBorder,
@@ -718,13 +726,19 @@ class PromoCardWidget extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(18),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  errorWidget: (c, u, e) => const Icon(
-                    Icons.shopping_bag,
-                    size: 50,
-                    color: Colors.grey,
+                child: Container(
+                  color: isBalans ? Colors.white : Colors.transparent,
+                  padding: isBalans
+                      ? const EdgeInsets.symmetric(vertical: 6, horizontal: 16)
+                      : EdgeInsets.zero,
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: isBalans ? BoxFit.contain : BoxFit.cover,
+                    errorWidget: (c, u, e) => const Icon(
+                      Icons.shopping_bag,
+                      size: 50,
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
               ),
