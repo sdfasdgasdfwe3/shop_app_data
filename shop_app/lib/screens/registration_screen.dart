@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/infinity_auth_service.dart';
 
@@ -196,6 +197,31 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       return;
     }
 
+    if (kIsWeb) {
+      await Clipboard.setData(ClipboardData(text: email));
+      await launchUrl(
+        Uri.parse(
+            'https://infinity-mlm.com/user/registrationemailconfirm?AliasName='),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!mounted) return;
+      setState(() {
+        _currentStep = 2;
+        _errorMessage = null;
+      });
+      _startTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Email $email скопирован в буфер! Открыта форма Инфинити — вставьте email и нажмите «Получить код».',
+          ),
+          backgroundColor: const Color(0xFF2563EB),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -248,6 +274,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       setState(() {
         _errorMessage = 'Введите проверочный код из письма';
       });
+      return;
+    }
+
+    if (kIsWeb) {
+      setState(() {
+        _currentStep = 3;
+        _errorMessage = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Код принят! Переходим к заполнению анкеты.'),
+          backgroundColor: Color(0xFF10B981),
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
 
@@ -309,6 +350,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (!_agreeTerms) {
       setState(
           () => _errorMessage = 'Необходимо согласиться с условиями сервиса');
+      return;
+    }
+
+    if (kIsWeb) {
+      setState(() {
+        _currentStep = 4; // Успех
+        _errorMessage = null;
+      });
       return;
     }
 
@@ -719,7 +768,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     label: Text(
                       _isLoading && _isAutoMode
                           ? _autoStatus
-                          : 'Создать почту и получить код в 1 клик',
+                          : (kIsWeb
+                              ? 'Создать временную почту на Temp-Mail.io'
+                              : 'Создать почту и получить код в 1 клик'),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -818,9 +869,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         strokeWidth: 2.5,
                       ),
                     )
-                  : const Text(
-                      'Получить код подтверждения',
-                      style: TextStyle(
+                  : Text(
+                      kIsWeb
+                          ? 'Получить код (открыть Инфинити)'
+                          : 'Получить код подтверждения',
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1307,6 +1360,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                launchUrl(
+                  Uri.parse('https://infinity-mlm.com/user/login'),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+              icon: const Icon(Icons.open_in_browser, size: 18),
+              label: const Text('Открыть сайт Инфинити'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 46),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
             ),

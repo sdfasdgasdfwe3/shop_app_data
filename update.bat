@@ -7,15 +7,16 @@ git rebase --abort >nul 2>&1
 rem Add all changed and new files
 git add .gitignore
 git add data.json
+git add user_data.json
 git add version.json
 git add update.bat
 if exist images\ git add images\
 if exist categories\ git add categories\
 if exist shop_app\ git add shop_app\
+if exist docs\ git add docs\
 
 rem Remove admin.html from GitHub if it was pushed before
 git rm --cached admin.html >nul 2>&1
-git rm --cached user_data.json >nul 2>&1
 
 rem Create a commit with the current date and time
 git commit -m "Auto-update database and code: %date% %time%"
