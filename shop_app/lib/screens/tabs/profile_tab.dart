@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models.dart';
 import '../../data_manager.dart';
+import '../registration_screen.dart';
 
 class ProfileTab extends StatefulWidget {
   final bool isLoggedIn;
@@ -254,6 +255,54 @@ class _ProfileTabState extends State<ProfileTab> {
                         ),
                         onPressed: _handleLogin,
                         child: const Text('Войти'),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              'или',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(color: Colors.blue.shade600),
+                        ),
+                        icon: const Icon(Icons.person_add_outlined),
+                        label: const Text(
+                          'Зарегистрироваться в Инфинити',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: () async {
+                          final registeredEmail = await Navigator.push<String?>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (ctx) => const RegistrationScreen(),
+                            ),
+                          );
+                          if (registeredEmail != null && registeredEmail.isNotEmpty) {
+                            setState(() {
+                              _loginController.text = registeredEmail;
+                            });
+                          }
+                        },
                       ),
                     ],
                   ),
