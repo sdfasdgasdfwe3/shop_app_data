@@ -24,59 +24,212 @@ class PromoCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = theme == 'dark';
     final isSquare = format == 'square';
     final contactPhone = phone.isNotEmpty ? phone : '+7 (999) 777-22-33';
     final imageUrl = "$repoUrl/images/${product.image}";
     final categoryName = product.category.toUpperCase();
 
-    final bgDecoration = isDark
-        ? BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: const RadialGradient(
-              center: Alignment(0.0, -0.4),
-              radius: 1.1,
-              colors: [
-                Color(0xFF144535),
-                Color(0xFF082017),
-                Color(0xFF030D0A),
-              ],
-            ),
-            border: Border.all(
-              color: const Color(0xFF34D399).withValues(alpha: 0.4),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF052E16).withValues(alpha: 0.6),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
-              ),
+    // Цветовая палитра темы
+    final BoxDecoration bgDecoration;
+    final Color primaryAccent;
+    final Color brandBadgeBg;
+    final Color brandBadgeBorder;
+    final Color categoryBadgeBg;
+    final Color categoryBadgeBorder;
+    final Color categoryBadgeText;
+    final Color photoFrameBg;
+    final Color photoFrameBorder;
+    final Color titleColor;
+    final Color bulletsTextColor;
+    final Color bulletIconColor;
+    final Color bulletsBoxBg;
+    final Color bulletsBoxBorder;
+    final Color contactBoxBg;
+    final Color contactBoxBorder;
+    final Color contactLabelColor;
+    final Color contactPhoneColor;
+    final Color contactIconColor;
+
+    switch (theme) {
+      case 'blue': // Насыщенный синий
+        bgDecoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const RadialGradient(
+            center: Alignment(0.0, -0.4),
+            radius: 1.1,
+            colors: [
+              Color(0xFF13325B),
+              Color(0xFF0C1F38),
+              Color(0xFF050D18),
             ],
-          )
-        : BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFFFFFFF),
-                Color(0xFFF0FDF4),
-                Color(0xFFDCFCE7),
-              ],
+          ),
+          border: Border.all(
+            color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF031024).withValues(alpha: 0.65),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
             ),
-            border: Border.all(
-              color: const Color(0xFFA7F3D0),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 25,
-                offset: const Offset(0, 10),
-              ),
+          ],
+        );
+        primaryAccent = const Color(0xFF38BDF8);
+        brandBadgeBg = const Color(0xFF0B213D);
+        brandBadgeBorder = const Color(0xFF38BDF8);
+        categoryBadgeBg = const Color(0xFF0F2C52);
+        categoryBadgeBorder = const Color(0xFF38BDF8).withValues(alpha: 0.4);
+        categoryBadgeText = const Color(0xFFBAE6FD);
+        photoFrameBg = const Color(0xFF0B213D);
+        photoFrameBorder = const Color(0xFF38BDF8).withValues(alpha: 0.5);
+        titleColor = Colors.white;
+        bulletsTextColor = const Color(0xFFE0F2FE);
+        bulletIconColor = const Color(0xFF38BDF8);
+        bulletsBoxBg = const Color(0xFF0C1F38).withValues(alpha: 0.75);
+        bulletsBoxBorder = const Color(0xFF1E3A8A);
+        contactBoxBg = const Color(0xFF0B213D);
+        contactBoxBorder = const Color(0xFF1E3A8A);
+        contactLabelColor = const Color(0xFFBAE6FD);
+        contactPhoneColor = Colors.white;
+        contactIconColor = const Color(0xFF38BDF8);
+        break;
+
+      case 'sky': // Светло-голубой
+        bgDecoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFF0F9FF),
+              Color(0xFFE0F2FE),
             ],
-          );
+          ),
+          border: Border.all(
+            color: const Color(0xFF7DD3FC),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0284C7).withValues(alpha: 0.1),
+              blurRadius: 25,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        );
+        primaryAccent = const Color(0xFF0284C7);
+        brandBadgeBg = Colors.white;
+        brandBadgeBorder = const Color(0xFF0284C7);
+        categoryBadgeBg = Colors.white;
+        categoryBadgeBorder = const Color(0xFFBAE6FD);
+        categoryBadgeText = const Color(0xFF0369A1);
+        photoFrameBg = Colors.white;
+        photoFrameBorder = const Color(0xFF7DD3FC);
+        titleColor = const Color(0xFF0F172A);
+        bulletsTextColor = const Color(0xFF1E293B);
+        bulletIconColor = const Color(0xFF0284C7);
+        bulletsBoxBg = Colors.white.withValues(alpha: 0.88);
+        bulletsBoxBorder = const Color(0xFFBAE6FD);
+        contactBoxBg = const Color(0xFFF0F9FF);
+        contactBoxBorder = const Color(0xFFBAE6FD);
+        contactLabelColor = const Color(0xFF0369A1);
+        contactPhoneColor = const Color(0xFF0F172A);
+        contactIconColor = const Color(0xFF0284C7);
+        break;
+
+      case 'light': // Эко-светлый
+        bgDecoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFF0FDF4),
+              Color(0xFFDCFCE7),
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFFA7F3D0),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 25,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        );
+        primaryAccent = const Color(0xFF059669);
+        brandBadgeBg = Colors.white;
+        brandBadgeBorder = const Color(0xFF10B981);
+        categoryBadgeBg = Colors.white;
+        categoryBadgeBorder = const Color(0xFFA7F3D0);
+        categoryBadgeText = const Color(0xFF065F46);
+        photoFrameBg = Colors.white;
+        photoFrameBorder = const Color(0xFFA7F3D0);
+        titleColor = const Color(0xFF0F172A);
+        bulletsTextColor = const Color(0xFF334155);
+        bulletIconColor = const Color(0xFF059669);
+        bulletsBoxBg = Colors.white.withValues(alpha: 0.88);
+        bulletsBoxBorder = const Color(0xFFA7F3D0);
+        contactBoxBg = const Color(0xFFF0FDF4);
+        contactBoxBorder = const Color(0xFFD1FAE5);
+        contactLabelColor = const Color(0xFF065F46);
+        contactPhoneColor = const Color(0xFF0F172A);
+        contactIconColor = const Color(0xFF059669);
+        break;
+
+      case 'dark': // Изумрудный (по умолчанию темный)
+      default:
+        bgDecoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const RadialGradient(
+            center: Alignment(0.0, -0.4),
+            radius: 1.1,
+            colors: [
+              Color(0xFF144535),
+              Color(0xFF082017),
+              Color(0xFF030D0A),
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFF34D399).withValues(alpha: 0.4),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF052E16).withValues(alpha: 0.6),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
+            ),
+          ],
+        );
+        primaryAccent = const Color(0xFF34D399);
+        brandBadgeBg = const Color(0xFF0A231B);
+        brandBadgeBorder = const Color(0xFF34D399);
+        categoryBadgeBg = const Color(0xFF0E3024);
+        categoryBadgeBorder = const Color(0xFF10B981).withValues(alpha: 0.4);
+        categoryBadgeText = const Color(0xFFA7F3D0);
+        photoFrameBg = const Color(0xFF0A221A);
+        photoFrameBorder = const Color(0xFF34D399).withValues(alpha: 0.5);
+        titleColor = Colors.white;
+        bulletsTextColor = const Color(0xFFD1FAE5);
+        bulletIconColor = const Color(0xFF34D399);
+        bulletsBoxBg = const Color(0xFF09251B).withValues(alpha: 0.7);
+        bulletsBoxBorder = const Color(0xFF1E5B45);
+        contactBoxBg = const Color(0xFF0A291F);
+        contactBoxBorder = const Color(0xFF1E5B45);
+        contactLabelColor = const Color(0xFFA7F3D0);
+        contactPhoneColor = Colors.white;
+        contactIconColor = const Color(0xFF34D399);
+        break;
+    }
+
+    final isDarkTheme = theme == 'dark' || theme == 'blue';
 
     // Блок цены и баллов
     Widget priceSection;
@@ -87,23 +240,72 @@ class PromoCardWidget extends StatelessWidget {
           : product.price;
       final priceLabel = isRetail ? 'РОЗНИЧНАЯ ЦЕНА' : 'ПАРТНЕРСКАЯ ЦЕНА';
 
-      final priceBg = isRetail
-          ? (isDark ? const Color(0xFFF59E0B) : const Color(0xFF059669))
-          : (isDark ? const Color(0xFF10B981) : const Color(0xFF047857));
+      Color priceBg;
+      Color priceTextColor;
+      Color priceSubColor;
 
-      final priceTextColor = isRetail
-          ? (isDark ? const Color(0xFF0F172A) : Colors.white)
-          : (isDark ? const Color(0xFF0F172A) : Colors.white);
+      if (isRetail) {
+        if (theme == 'sky') {
+          priceBg = const Color(0xFFD97706);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFFEF3C7);
+        } else if (theme == 'blue' || theme == 'dark') {
+          priceBg = const Color(0xFFF59E0B);
+          priceTextColor = const Color(0xFF0F172A);
+          priceSubColor = const Color(0xFF451A03);
+        } else {
+          priceBg = const Color(0xFF059669);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFD1FAE5);
+        }
+      } else {
+        // Партнерская
+        if (theme == 'blue') {
+          priceBg = const Color(0xFF2563EB);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFDBEAFE);
+        } else if (theme == 'sky') {
+          priceBg = const Color(0xFF0284C7);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFE0F2FE);
+        } else if (theme == 'dark') {
+          priceBg = const Color(0xFF10B981);
+          priceTextColor = const Color(0xFF0F172A);
+          priceSubColor = const Color(0xFF064E3B);
+        } else {
+          priceBg = const Color(0xFF047857);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFD1FAE5);
+        }
+      }
 
-      final priceSubColor = isRetail
-          ? (isDark ? const Color(0xFF451A03) : const Color(0xFFD1FAE5))
-          : (isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5));
+      Color pointsBg;
+      Color pointsBorder;
+      Color pointsTextColor;
 
-      final pointsBg = isDark ? const Color(0xFF0E382A) : const Color(0xFFF0FDF4);
-      final pointsBorder = isDark
-          ? const Color(0xFF34D399).withValues(alpha: 0.5)
-          : const Color(0xFFA7F3D0);
-      final pointsTextColor = isDark ? const Color(0xFFD1FAE5) : const Color(0xFF065F46);
+      switch (theme) {
+        case 'blue':
+          pointsBg = const Color(0xFF0B213D);
+          pointsBorder = const Color(0xFF38BDF8).withValues(alpha: 0.5);
+          pointsTextColor = const Color(0xFFBAE6FD);
+          break;
+        case 'sky':
+          pointsBg = const Color(0xFFF0F9FF);
+          pointsBorder = const Color(0xFFBAE6FD);
+          pointsTextColor = const Color(0xFF0369A1);
+          break;
+        case 'light':
+          pointsBg = const Color(0xFFF0FDF4);
+          pointsBorder = const Color(0xFFA7F3D0);
+          pointsTextColor = const Color(0xFF065F46);
+          break;
+        case 'dark':
+        default:
+          pointsBg = const Color(0xFF0E382A);
+          pointsBorder = const Color(0xFF34D399).withValues(alpha: 0.5);
+          pointsTextColor = const Color(0xFFD1FAE5);
+          break;
+      }
 
       priceSection = IntrinsicHeight(
         child: Row(
@@ -189,23 +391,48 @@ class PromoCardWidget extends StatelessWidget {
         ),
       );
     } else {
+      // Цена в ЛС
+      Color noneBg;
+      Color noneBorder;
+      Color noneText;
+
+      switch (theme) {
+        case 'blue':
+          noneBg = const Color(0xFF0284C7).withValues(alpha: 0.25);
+          noneBorder = const Color(0xFF38BDF8);
+          noneText = const Color(0xFF7DD3FC);
+          break;
+        case 'sky':
+          noneBg = const Color(0xFF0284C7);
+          noneBorder = Colors.transparent;
+          noneText = Colors.white;
+          break;
+        case 'light':
+          noneBg = const Color(0xFF059669);
+          noneBorder = Colors.transparent;
+          noneText = Colors.white;
+          break;
+        case 'dark':
+        default:
+          noneBg = const Color(0xFF10B981).withValues(alpha: 0.2);
+          noneBorder = const Color(0xFF34D399);
+          noneText = const Color(0xFF6EE7B7);
+          break;
+      }
+
       priceSection = Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF10B981).withValues(alpha: 0.2)
-              : const Color(0xFF059669),
+          color: noneBg,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark ? const Color(0xFF34D399) : Colors.transparent,
-          ),
+          border: Border.all(color: noneBorder),
         ),
         child: Text(
           '💬 Цена и консультация — в ЛС',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,
-            color: isDark ? const Color(0xFF6EE7B7) : Colors.white,
+            color: noneText,
           ),
         ),
       );
@@ -228,11 +455,9 @@ class PromoCardWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0A231B) : Colors.white,
+                    color: brandBadgeBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF10B981),
-                    ),
+                    border: Border.all(color: brandBadgeBorder),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -240,7 +465,7 @@ class PromoCardWidget extends StatelessWidget {
                       Icon(
                         Icons.all_inclusive,
                         size: 14,
-                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                        color: primaryAccent,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -249,7 +474,7 @@ class PromoCardWidget extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.0,
-                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                          color: primaryAccent,
                         ),
                       ),
                     ],
@@ -258,13 +483,9 @@ class PromoCardWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0E3024) : Colors.white,
+                    color: categoryBadgeBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF10B981).withValues(alpha: 0.4)
-                          : const Color(0xFFA7F3D0),
-                    ),
+                    border: Border.all(color: categoryBadgeBorder),
                   ),
                   child: Text(
                     categoryName,
@@ -272,7 +493,7 @@ class PromoCardWidget extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
-                      color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                      color: categoryBadgeText,
                     ),
                   ),
                 ),
@@ -284,20 +505,18 @@ class PromoCardWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  width: 112,
-                  height: 112,
+                  width: 114,
+                  height: 114,
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0A221A) : Colors.white,
+                    color: photoFrameBg,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF34D399).withValues(alpha: 0.5)
-                          : const Color(0xFFA7F3D0),
+                      color: photoFrameBorder,
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                        color: Colors.black.withValues(alpha: isDarkTheme ? 0.35 : 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -305,17 +524,13 @@ class PromoCardWidget extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(6),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.contain,
-                        errorWidget: (c, u, e) => const Icon(
-                          Icons.shopping_bag,
-                          size: 40,
-                          color: Colors.grey,
-                        ),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      errorWidget: (c, u, e) => const Icon(
+                        Icons.shopping_bag,
+                        size: 40,
+                        color: Colors.grey,
                       ),
                     ),
                   ),
@@ -334,7 +549,7 @@ class PromoCardWidget extends StatelessWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
                           height: 1.2,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: titleColor,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -349,9 +564,7 @@ class PromoCardWidget extends StatelessWidget {
                                 child: Icon(
                                   Icons.check_circle,
                                   size: 13,
-                                  color: isDark
-                                      ? const Color(0xFF34D399)
-                                      : const Color(0xFF059669),
+                                  color: bulletIconColor,
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -364,9 +577,7 @@ class PromoCardWidget extends StatelessWidget {
                                     fontSize: 10.5,
                                     height: 1.25,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark
-                                        ? const Color(0xFFD1FAE5)
-                                        : const Color(0xFF334155),
+                                    color: bulletsTextColor,
                                   ),
                                 ),
                               ),
@@ -387,15 +598,9 @@ class PromoCardWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF0A291F)
-                    : const Color(0xFFF0FDF4),
+                color: contactBoxBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF1E5B45)
-                      : const Color(0xFFD1FAE5),
-                ),
+                border: Border.all(color: contactBoxBorder),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -403,7 +608,7 @@ class PromoCardWidget extends StatelessWidget {
                   Icon(
                     Icons.phone,
                     size: 15,
-                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                    color: contactIconColor,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -412,7 +617,7 @@ class PromoCardWidget extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
-                      color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                      color: contactLabelColor,
                     ),
                   ),
                   Text(
@@ -421,7 +626,7 @@ class PromoCardWidget extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.5,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      color: contactPhoneColor,
                     ),
                   ),
                 ],
@@ -447,11 +652,9 @@ class PromoCardWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0A231B) : Colors.white,
+                    color: brandBadgeBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF10B981),
-                    ),
+                    border: Border.all(color: brandBadgeBorder),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -459,7 +662,7 @@ class PromoCardWidget extends StatelessWidget {
                       Icon(
                         Icons.all_inclusive,
                         size: 15,
-                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                        color: primaryAccent,
                       ),
                       const SizedBox(width: 5),
                       Text(
@@ -468,7 +671,7 @@ class PromoCardWidget extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.0,
-                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                          color: primaryAccent,
                         ),
                       ),
                     ],
@@ -477,13 +680,9 @@ class PromoCardWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0E3024) : Colors.white,
+                    color: categoryBadgeBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF10B981).withValues(alpha: 0.4)
-                          : const Color(0xFFA7F3D0),
-                    ),
+                    border: Border.all(color: categoryBadgeBorder),
                   ),
                   child: Text(
                     categoryName,
@@ -491,47 +690,41 @@ class PromoCardWidget extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
-                      color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                      color: categoryBadgeText,
                     ),
                   ),
                 ),
               ],
             ),
 
-            // Фото по центру
+            // Фото по центру (широкоформатный контейнер 220 x 155 под пропорции студийных фото 1200x868)
             Container(
-              width: 170,
-              height: 170,
+              width: 220,
+              height: 155,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0A221A) : Colors.white,
-                borderRadius: BorderRadius.circular(22),
+                color: photoFrameBg,
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF34D399).withValues(alpha: 0.5)
-                      : const Color(0xFFA7F3D0),
+                  color: photoFrameBorder,
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.09),
+                    color: Colors.black.withValues(alpha: isDarkTheme ? 0.35 : 0.09),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(8),
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.contain,
-                    errorWidget: (c, u, e) => const Icon(
-                      Icons.shopping_bag,
-                      size: 50,
-                      color: Colors.grey,
-                    ),
+                borderRadius: BorderRadius.circular(18),
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.cover,
+                  errorWidget: (c, u, e) => const Icon(
+                    Icons.shopping_bag,
+                    size: 50,
+                    color: Colors.grey,
                   ),
                 ),
               ),
@@ -546,7 +739,7 @@ class PromoCardWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                color: titleColor,
               ),
             ),
 
@@ -554,15 +747,9 @@ class PromoCardWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF09251B).withValues(alpha: 0.7)
-                    : Colors.white.withValues(alpha: 0.85),
+                color: bulletsBoxBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF1E5B45)
-                      : const Color(0xFFA7F3D0),
-                ),
+                border: Border.all(color: bulletsBoxBorder),
               ),
               child: Column(
                 children: bullets.map((b) {
@@ -576,9 +763,7 @@ class PromoCardWidget extends StatelessWidget {
                           child: Icon(
                             Icons.check_circle,
                             size: 13,
-                            color: isDark
-                                ? const Color(0xFF34D399)
-                                : const Color(0xFF059669),
+                            color: bulletIconColor,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -588,9 +773,7 @@ class PromoCardWidget extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? const Color(0xFFD1FAE5)
-                                  : const Color(0xFF334155),
+                              color: bulletsTextColor,
                             ),
                           ),
                         ),
@@ -608,15 +791,9 @@ class PromoCardWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF0A291F)
-                    : const Color(0xFFF0FDF4),
+                color: contactBoxBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF1E5B45)
-                      : const Color(0xFFD1FAE5),
-                ),
+                border: Border.all(color: contactBoxBorder),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -624,7 +801,7 @@ class PromoCardWidget extends StatelessWidget {
                   Icon(
                     Icons.phone,
                     size: 15,
-                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                    color: contactIconColor,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -633,7 +810,7 @@ class PromoCardWidget extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
-                      color: isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46),
+                      color: contactLabelColor,
                     ),
                   ),
                   Text(
@@ -642,7 +819,7 @@ class PromoCardWidget extends StatelessWidget {
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.5,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      color: contactPhoneColor,
                     ),
                   ),
                 ],

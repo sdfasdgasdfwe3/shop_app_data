@@ -76,119 +76,80 @@ class _PromoTabState extends State<PromoTab> {
   }
 
   List<String> _extractPromoBullets(Product product) {
-    final desc = product.description;
-    final lines = desc
-        .split('\n')
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty)
-        .toList();
+    const benefitRoots = [
+      'улучш', 'повыш', 'укрепл', 'восстановл', 'нормализ', 'защищ',
+      'очищ', 'снимает', 'сняти', 'эффективен', 'стимулир', 'поддержив',
+      'поддержк', 'предотвращ', 'помога', 'насыщ', 'купир', 'заживл',
+      'устраня', 'активизир', 'снижа', 'снижени', 'облегча', 'тонизир',
+      'успокаив', 'омолажив', 'антиоксидант', 'противовоспалительн',
+      'противовирусн', 'седативн', 'благотворн', 'благоприятн', 'увеличива',
+      'уничтожа', 'обезболивающ', 'замедляет старение', 'оздоравлива',
+      'борется', 'кровоостанавливающ', 'регенерирующ', 'бактерицидн'
+    ];
 
-    // 1. Поиск явного раздела «Полезные свойства» / «Влияние на организм» / «Действие»
-    List<String> benefitsLines = [];
-    bool inBenefits = false;
+    const nonBenefitWords = [
+      'содержит', 'в состав', 'богат', 'богаты', 'имеют богатый состав', 'обнаружены',
+      'присутствуют', 'хранить', 'годен', 'курс приема', 'противопоказан',
+      'внутрь', 'в сухом', 'капсул', 'до еды',
+      'во время еды', 'после еды', 'масса', 'объем', 'форма выпуска', 'является продуктом',
+      'изготовлен', 'произрастает', 'при хранении', 'за счет него',
+      'полезные свойства', 'описание свойств', 'влияние на организм',
+      'свойства продукта', 'состав:'
+    ];
 
-    for (var l in lines) {
-      final lower = l.toLowerCase();
+    const hangingEndings = [
+      'ого', 'его', 'ому', 'ему', 'ым', 'им', 'ом', 'ем', 'ой', 'ей',
+      'ую', 'юю', 'ых', 'их', 'ыми', 'ими', 'ое', 'ее', 'ая', 'яя',
+      'ый', 'ий'
+    ];
 
-      // Начало блока полезных свойств
-      if (lower.startsWith('полезные свойства') ||
-          lower.startsWith('влияние на организм') ||
-          lower.startsWith('основное действие') ||
-          lower.startsWith('действие:') ||
-          lower.startsWith('действие продукта') ||
-          lower.startsWith('основные свойства') ||
-          lower.startsWith('свойства продукта') ||
-          lower.startsWith('свойства:') ||
-          lower.startsWith('уже через')) {
-        inBenefits = true;
-        final colonIdx = l.indexOf(':');
-        if (colonIdx != -1 && colonIdx < l.length - 1) {
-          final after = l.substring(colonIdx + 1).trim();
-          if (after.length > 10) {
-            benefitsLines.add(after);
-          }
-        }
-        continue;
-      }
+    const hangingPrepositions = [
+      'в', 'на', 'от', 'к', 'до', 'по', 'из', 'при', 'как', 'для',
+      'не только', 'в том числе', 'что', 'чем', 'а', 'и', 'или', 'но', 'с'
+    ];
 
-      if (inBenefits) {
-        // Конец блока полезных свойств при переходе к другому разделу
-        if (lower.startsWith('состав:') ||
-            lower.startsWith('состав') ||
-            lower.startsWith('способ применения') ||
-            lower.startsWith('рекомендации') ||
-            lower.startsWith('противопоказания') ||
-            lower.startsWith('условия хранения') ||
-            lower.startsWith('срок годности') ||
-            lower.startsWith('форма выпуска') ||
-            lower.startsWith('масса') ||
-            lower.startsWith('объем') ||
-            lower.startsWith('курс') ||
-            (l.endsWith(':') &&
-                !lower.contains('свойств') &&
-                !lower.contains('действи') &&
-                !lower.contains('организм') &&
-                !lower.contains('эффект'))) {
-          inBenefits = false;
-          continue;
-        }
-        benefitsLines.add(l);
-      }
+    const exemptNouns = {
+      'настроение', 'давление', 'кровообращение', 'пищеварение', 'состояние',
+      'действие', 'внимание', 'дыхание', 'зрение', 'здоровье', 'долголетие'
+    };
+
+    bool hasBenefit(String text) {
+      final tl = text.toLowerCase();
+      return benefitRoots.any((r) => tl.contains(r));
     }
 
-    // 2. Если отдельного блока свойств не найдено, берем строки описания,
-    // строго исключая блок «Состав:» и служебные инструкции
-    List<String> candidateLines = [];
-    if (benefitsLines.isNotEmpty) {
-      candidateLines = benefitsLines;
-    } else {
-      bool skipBlock = false;
-      for (var l in lines) {
-        final lower = l.toLowerCase();
-        if (lower.startsWith('состав:') ||
-            lower.startsWith('состав') ||
-            lower.startsWith('активные компоненты:')) {
-          skipBlock = true;
-          continue;
-        }
-        if (skipBlock) {
-          if (lower.startsWith('способ применения') ||
-              lower.startsWith('рекомендации') ||
-              lower.startsWith('противопоказания') ||
-              lower.startsWith('условия хранения') ||
-              lower.startsWith('срок годности') ||
-              lower.startsWith('форма выпуска') ||
-              lower.startsWith('показания') ||
-              lower.startsWith('действие') ||
-              l.endsWith(':')) {
-            skipBlock = false;
-          } else {
-            continue;
-          }
-        }
-        if (lower.startsWith('способ применения') ||
-            lower.startsWith('противопоказания') ||
-            lower.startsWith('условия хранения') ||
-            lower.startsWith('срок годности') ||
-            lower.startsWith('форма выпуска') ||
-            lower.startsWith('масса') ||
-            lower.startsWith('объем') ||
-            lower.startsWith('курс') ||
-            lower.startsWith('пищевая ценность')) {
-          continue;
-        }
-        candidateLines.add(l);
+    bool isGrammaticallyIncomplete(String s) {
+      final sl = s.toLowerCase().trim();
+      if (sl.endsWith(':') || sl.endsWith(',') || sl.endsWith('-') || sl.endsWith('—')) {
+        return true;
       }
+      final words = sl.split(RegExp(r'\s+'));
+      if (words.isEmpty) return true;
+      final lastWord = words.last;
+      final lastWordClean = lastWord.replaceAll(RegExp(r'[^а-яё]'), '');
+
+      if (hangingPrepositions.contains(lastWordClean)) {
+        return true;
+      }
+      if (exemptNouns.contains(lastWordClean)) {
+        return false;
+      }
+      if (lastWordClean.length >= 4 &&
+          hangingEndings.any((e) => lastWordClean.endsWith(e))) {
+        return true;
+      }
+      return false;
     }
 
-    // 3. Формирование кратких и понятных тезисов
-    List<String> bullets = [];
-
-    for (var raw in candidateLines) {
-      String l = raw.trim();
-      l = l.replaceAll(RegExp(r'^[•\-\+«\*\d\.\)\s]+'), '').trim();
-      l = l.replaceAll('«', '').replaceAll('»', '').replaceAll('"', '');
-      l = l
+    String cleanClause(String s) {
+      var res = s.trim();
+      res = res.replaceAll(RegExp(r'^[•\-\+«\*\d\.\)\s]+'), '').trim();
+      res = res.replaceAll('«', '').replaceAll('»', '').replaceAll('"', '');
+      if (res.contains('(') && !res.contains(')')) {
+        res = res.split('(')[0].trim();
+      }
+      res = res.replaceAll(RegExp(r'\([^)]*\)'), '').trim();
+      res = res
           .replaceAll(
             RegExp(
               r'^(Крем Ведария|Сироп|Чайный напиток|Фитосбор|БАЛАНС ИНФИНИТИ|СУСТАКАПС|ИММУНОКАПС|ДИАБЕТУ НЕТ|АНДРОКАПС|РЕЛАКС|КАРДИОКАПС|БРОНХОКАПС)\s*(\d+\s*шт|\d+\s*капс|\d+\s*мл|\d+\s*г)?\s*',
@@ -197,159 +158,188 @@ class _PromoTabState extends State<PromoTab> {
             '',
           )
           .trim();
+      res = res
+          .replaceAll(
+            RegExp(
+              r'^(который|которая|которое|которые|что|он|она|оно|они|также он|также она|также оно|также они|также|кроме того|за счет этого|благодаря этому|при этом|в итоге|доказано, что|отличный|а также|и способствуют|и способны|и очищают|и|а|поэтому|в том числе)\s*,?\s*',
+              caseSensitive: false,
+            ),
+            '',
+          )
+          .trim();
+      res = res
+          .replaceAll(
+            RegExp(r'^(100%|натуральный природный|природный)\s+', caseSensitive: false),
+            '',
+          )
+          .trim();
+      res = res.replaceAll(RegExp(r'^(дает мощный)', caseSensitive: false), 'Обеспечивает');
+      res = res.replaceAll(
+        RegExp(
+          r'^(является эффективным средством, как при|является эффективным средством при)',
+          caseSensitive: false,
+        ),
+        'Эффективен при',
+      );
+      res = res
+          .replaceAll(
+            RegExp(
+              r'^(компоненты фитосбора|природные компоненты, входящие в состав фитосбора,|компоненты, входящие в состав фитосбора,|природные компоненты|компоненты бальзама|компоненты)\s*',
+              caseSensitive: false,
+            ),
+            '',
+          )
+          .trim();
+      res = res
+          .replaceAll(
+            RegExp(
+              r'^(полезные свойства продукта:?|основные свойства:?|свойства продукта:?)\s*',
+              caseSensitive: false,
+            ),
+            '',
+          )
+          .trim();
+      res = res.replaceAll(RegExp(r'^(не только\s+)', caseSensitive: false), '').trim();
+      res = res.replaceAll(RegExp(r'^(но и\s+)', caseSensitive: false), '').trim();
+      res = res.replaceAll(RegExp(r'[.;!]+$'), '').trim();
+      if (res.isNotEmpty && res[0].toLowerCase() == res[0]) {
+        res = res[0].toUpperCase() + res.substring(1);
+      }
+      return res;
+    }
 
-      final lLower = l.toLowerCase();
-      if (lLower.startsWith('полезные свойства') ||
-          lLower.startsWith('влияние на организм') ||
-          lLower.startsWith('уже через') ||
-          lLower.startsWith('состав') ||
-          l.endsWith(':') ||
-          l.length < 10) {
+    final desc = product.description;
+    final lines = desc
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    List<String> candidates = [];
+
+    for (var l in lines) {
+      final lower = l.toLowerCase();
+      if (lower.startsWith('противопоказания') ||
+          lower.startsWith('условия хранения') ||
+          lower.startsWith('срок годности') ||
+          lower.startsWith('форма выпуска') ||
+          lower.startsWith('курс') ||
+          lower.startsWith('масса') ||
+          lower.startsWith('объем')) {
         continue;
       }
 
-      // Разбиваем по точкам, восклицательным знакам или точкам с запятой
-      final parts = l.split(RegExp(r'(?<=[.;!])\s+|\s*;\s*'));
-      for (var rawPart in parts) {
-        String s = rawPart.trim();
-        s = s.replaceAll(RegExp(r'^[•\-\+«\*\d\.\)\s]+'), '').trim();
-        s = s.replaceAll(RegExp(r'[.;!]+$'), '').trim();
-
-        if (s.length < 10) continue;
-
-        final sLower = s.toLowerCase();
-        if (sLower.contains('хранить') ||
-            sLower.contains('годен') ||
-            sLower.contains('курс приема') ||
-            sLower.contains('противопоказан') ||
-            sLower.contains('в сухом месте') ||
-            sLower.contains('внутрь') ||
-            sLower.contains('способ применения') ||
-            sLower.contains('детям до') ||
-            sLower.contains('беременн') ||
-            sLower.contains('по 1 капсул') ||
-            sLower.contains('по 2 капсул') ||
-            sLower.contains('до еды') ||
-            sLower.contains('после еды') ||
-            sLower.contains('во время еды')) {
-          continue;
-        }
-
-        // Если строка вида "Компонент — Действие" или "Компонент: Действие"
-        if (s.contains('—')) {
-          final sub = s.split('—');
-          String action = sub[1].trim();
-          if (action.contains(':')) {
-            action = action.split(':')[1].trim();
+      final chunks = l.split(RegExp(r'(?<=[.;!])\s+|\s*;\s*'));
+      for (var rawC in chunks) {
+        var c = rawC.trim();
+        if (c.contains('—')) {
+          final parts = c.split('—');
+          if (parts.length > 1) {
+            var action = parts[1].trim();
+            if (action.contains(':')) {
+              action = action.split(':')[1].trim();
+            }
+            if (action.length >= 15 && hasBenefit(action)) {
+              c = action;
+            }
           }
-          if (action.length >= 12) s = action;
-        } else if (s.contains(' - ')) {
-          final sub = s.split(' - ');
-          String action = sub[1].trim();
-          if (action.contains(':')) {
-            action = action.split(':')[1].trim();
+        } else if (c.contains(' - ')) {
+          final parts = c.split(' - ');
+          if (parts.length > 1) {
+            var action = parts[1].trim();
+            if (action.contains(':')) {
+              action = action.split(':')[1].trim();
+            }
+            if (action.length >= 15 && hasBenefit(action)) {
+              c = action;
+            }
           }
-          if (action.length >= 12) s = action;
-        } else if (s.contains(':') && !s.startsWith('http')) {
-          final sub = s.split(':');
-          String action = sub[1].trim();
-          if (action.length >= 12) s = action;
-        }
-
-        // Очищаем вводные слова в начале
-        s = s
-            .replaceAll(
-              RegExp(
-                r'^(который|которая|которое|которые|что|он|она|оно|они|также он|также она|также оно|также они|также|кроме того|за счет этого|благодаря этому|при этом)\s+',
-                caseSensitive: false,
-              ),
-              '',
-            )
-            .trim();
-        s = s
-            .replaceAll(
-              RegExp(
-                r'^(положительно влияет на [^:,;]+:\s*)',
-                caseSensitive: false,
-              ),
-              '',
-            )
-            .trim();
-        s = s
-            .replaceAll(
-              RegExp(
-                r'^(положительно влияет на [^:,;]+,\s*)',
-                caseSensitive: false,
-              ),
-              '',
-            )
-            .trim();
-        s = s
-            .replaceAll(
-              RegExp(
-                r'^(100%|натуральный природный|природный)\s+',
-                caseSensitive: false,
-              ),
-              '',
-            )
-            .trim();
-        s = s.replaceAll('дает мощный', 'Обеспечивает');
-        s = s.replaceAll(
-          'самый насыщенный и комплексный по составу крем, который является эффективным средством, как при',
-          'Эффективен при',
-        );
-        s = s.replaceAll(
-          'является эффективным средством, как при',
-          'Эффективен при',
-        );
-        s = s.replaceAll('является эффективным средством при', 'Эффективен при');
-
-        // Первая буква заглавная
-        if (s.isNotEmpty && s[0].toLowerCase() == s[0]) {
-          s = s[0].toUpperCase() + s.substring(1);
-        }
-
-        // Если слишком длинно, укорачиваем до первой запятой
-        if (s.length > 52 && s.contains(',')) {
-          final cp = s.split(',');
-          if (cp[0].trim().length >= 15) {
-            s = cp[0].trim();
+        } else if (c.contains(':') && !c.startsWith('http') && !c.toLowerCase().startsWith('состав')) {
+          final parts = c.split(':');
+          if (parts.length > 1) {
+            var action = parts[1].trim();
+            if (action.length >= 15 && hasBenefit(action)) {
+              c = action;
+            }
           }
         }
 
-        if (s.length >= 12 && s.length <= 56 && !bullets.contains(s)) {
-          bullets.add(s);
+        List<String> subClauses = [c];
+        if (c.contains(',') && c.length > 60) {
+          final parts = c.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+          final benefitParts = parts.where((p) => hasBenefit(p)).toList();
+          if (benefitParts.length >= 2) {
+            subClauses = parts;
+          } else if (parts.isNotEmpty &&
+              parts[0].length >= 20 &&
+              hasBenefit(parts[0]) &&
+              !isGrammaticallyIncomplete(parts[0])) {
+            subClauses = [parts[0]];
+          }
         }
-        if (bullets.length >= 3) break;
+
+        for (var clause in subClauses) {
+          final cleanC = cleanClause(clause);
+          if (cleanC.length < 14 || cleanC.length > 78) continue;
+
+          final cLower = cleanC.toLowerCase();
+          if (nonBenefitWords.any((nb) => cLower.contains(nb))) continue;
+          if (!hasBenefit(cleanC)) continue;
+          if (isGrammaticallyIncomplete(cleanC)) continue;
+
+          if (!candidates.contains(cleanC)) {
+            candidates.add(cleanC);
+          }
+        }
       }
-      if (bullets.length >= 3) break;
     }
 
-    // Резервный вариант, если найдено меньше 3
-    if (bullets.length < 3) {
-      for (var raw in lines) {
-        final lower = raw.toLowerCase();
+    // Отбор 3 разнообразных тезисов
+    List<String> finalBullets = [];
+    for (var c in candidates) {
+      final words = c.toLowerCase().split(RegExp(r'\s+')).take(2).toSet();
+      final hasOverlap = finalBullets.any((b) {
+        final bWords = b.toLowerCase().split(RegExp(r'\s+')).take(2).toSet();
+        return words.intersection(bWords).length >= 2;
+      });
+      if (!hasOverlap) {
+        finalBullets.add(c);
+      }
+      if (finalBullets.length >= 3) break;
+    }
+
+    if (finalBullets.length < 3) {
+      for (var c in candidates) {
+        if (!finalBullets.contains(c)) {
+          finalBullets.add(c);
+        }
+        if (finalBullets.length >= 3) break;
+      }
+    }
+
+    // Резервное наполнение при нехватке
+    if (finalBullets.length < 3) {
+      for (var l in lines) {
+        final lower = l.toLowerCase();
         if (lower.startsWith('состав') ||
+            lower.startsWith('способ') ||
+            lower.startsWith('противопоказания') ||
             lower.startsWith('хранить') ||
-            lower.startsWith('годен') ||
-            lower.startsWith('противопоказан') ||
-            lower.startsWith('способ')) {
+            lower.startsWith('годен')) {
           continue;
         }
-        String s =
-            raw.replaceAll(RegExp(r'^[•\-\+«\*\d\.\)\s]+'), '').trim();
-        s = s.replaceAll(RegExp(r'[.;!]+$'), '').trim();
-        if (s.contains(',') && s.length > 50) {
-          s = s.split(',')[0].trim();
+        final cl = cleanClause(l);
+        if (cl.length >= 14 &&
+            cl.length <= 75 &&
+            !finalBullets.contains(cl) &&
+            !isGrammaticallyIncomplete(cl)) {
+          finalBullets.add(cl);
         }
-        if (s.length >= 12 && s.length <= 56 && !bullets.contains(s)) {
-          bullets.add(s);
-        }
-        if (bullets.length >= 3) break;
+        if (finalBullets.length >= 3) break;
       }
     }
 
-    return bullets.take(3).toList();
+    return finalBullets.take(3).toList();
   }
 
   Future<void> _exportAndSharePromoCard() async {
@@ -667,6 +657,46 @@ class _PromoTabState extends State<PromoTab> {
                           onSelected: (val) {
                             if (val) {
                               setState(() => _promoTheme = 'light');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('🌊 Синий')),
+                          selected: _promoTheme == 'blue',
+                          selectedColor: const Color(0xFF1D4ED8),
+                          labelStyle: TextStyle(
+                            color: _promoTheme == 'blue' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoTheme = 'blue');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('❄️ Светло-голубой')),
+                          selected: _promoTheme == 'sky',
+                          selectedColor: const Color(0xFF0284C7),
+                          labelStyle: TextStyle(
+                            color: _promoTheme == 'sky' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoTheme = 'sky');
                               _savePromoSettings();
                             }
                           },
