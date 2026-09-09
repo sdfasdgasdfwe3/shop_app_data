@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/infinity_auth_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -16,6 +17,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   int _currentStep = 1;
   bool _isLoading = false;
   String? _errorMessage;
+  String _autoStatus = '';
+  bool _isAutoMode = false;
 
   // Данные сессии
   String _sessionGuid = '';
@@ -27,7 +30,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   // Контроллеры шага 2 (Код)
   final TextEditingController _pinController = TextEditingController();
   Timer? _countdownTimer;
-  int _resendCountdown = 60;
+  int _resendCountdown = 90;
   bool _canResend = false;
 
   // Контроллеры шага 3 (Анкета)
@@ -57,7 +60,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   void _startTimer() {
     _countdownTimer?.cancel();
     setState(() {
-      _resendCountdown = 60;
+      _resendCountdown = 90;
       _canResend = false;
     });
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -75,7 +78,96 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     });
   }
 
-  // --- ШАГ 1: Запрос кода на Email ---
+  // --- АВТОМАТИЗАЦИЯ: Регистрация через Temp-Mail в 1 клик ---
+  Future<void> _handleAutoTempMail() async {
+    setState(() {
+      _isLoading = true;
+      _isAutoMode = true;
+      _errorMessage = null;
+      _autoStatus = 'Генерируем временный почтовый ящик...';
+    });
+
+    final tempEmail = await _authService.createTempEmail();
+    if (tempEmail == null) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _isAutoMode = false;
+        _errorMessage = 'Не удалось подключиться к сервису Temp-Mail';
+      });
+      return;
+    }
+
+    _emailController.text = tempEmail;
+
+    if (!mounted) return;
+    setState(() {
+      _autoStatus = 'Отправляем запрос на сайт Инфинити...';
+    });
+
+    final result = await _authService.sendEmailPin(tempEmail);
+    if (!mounted) return;
+
+    if (result.success && result.guid != null) {
+      _sessionGuid = result.guid!;
+      setState(() {
+        _currentStep = 2;
+        _errorMessage = null;
+      });
+      _startTimer();
+
+      // Автоматический перехват входящего письма с кодом
+      _startAutoPollPin(tempEmail);
+    } else {
+      setState(() {
+        _isLoading = false;
+        _isAutoMode = false;
+        _errorMessage = result.message ?? 'Ошибка при отправке запроса';
+      });
+    }
+  }
+
+  Future<void> _startAutoPollPin(String email) async {
+    setState(() {
+      _autoStatus = 'Ожидаем входящее письмо от Инфинити (~1-2 мин)...';
+    });
+
+    final extractedCode = await _authService.pollTempMailForPin(
+      email,
+      timeout: const Duration(minutes: 3),
+      onStatusUpdate: (status) {
+        if (mounted) {
+          setState(() {
+            _autoStatus = status;
+          });
+        }
+      },
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (extractedCode != null) {
+      _pinController.text = extractedCode;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Код $extractedCode автоматически получен из письма!'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+      // Автоматически переходим к шагу 3
+      _handleVerifyPin();
+    } else {
+      setState(() {
+        _autoStatus =
+            'Код пока не поступил. Вы можете проверить почту на temp-mail.io вручную или нажать повторить.';
+      });
+    }
+  }
+
+  // --- ШАГ 1: Запрос кода на Email (ручной ввод) ---
   Future<void> _handleSendPin() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
@@ -88,6 +180,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _autoStatus = '';
     });
 
     final result = await _authService.sendEmailPin(email);
@@ -104,9 +197,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         _errorMessage = null;
       });
       _startTimer();
+
+      // Если почта из temp-mail.io, включаем автоматический опрос
+      if (email.contains('ozsaip.com') ||
+          email.contains('yzcalo.com') ||
+          email.contains('lnovic.com') ||
+          email.contains('ruutukf.com') ||
+          email.contains('gmeenramy.com') ||
+          email.contains('olipii.com') ||
+          email.contains('ooynib.com')) {
+        _startAutoPollPin(email);
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Код подтверждения отправлен на $email'),
+          content: Text('Запрос отправлен! Доставка письма занимает 1–2 мин.'),
           backgroundColor: const Color(0xFF10B981),
         ),
       );
@@ -434,10 +539,90 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'На этот адрес придёт 6-значный код подтверждения для входа в систему.',
+              'На этот адрес придёт 6-значный проверочный код. Сервер отправляет письмо в течение 1–2 минут.',
               style: TextStyle(fontSize: 13, color: theme.hintColor),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
+
+            // Кнопка быстрой авто-регистрации через Temp-Mail
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome,
+                          color: Colors.amber, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Быстрая регистрация (авто-код)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Приложение автоматически создаст временную почту на temp-mail.io, отправит запрос и перехватит код из письма!',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _handleAutoTempMail,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade700,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 42),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: _isLoading && _isAutoMode
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.flash_on, size: 18),
+                    label: Text(
+                      _isLoading && _isAutoMode
+                          ? _autoStatus
+                          : 'Создать почту и получить код в 1 клик',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey.shade300)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text('или ввести свою почту',
+                      style: TextStyle(fontSize: 12, color: theme.hintColor)),
+                ),
+                Expanded(child: Divider(color: Colors.grey.shade300)),
+              ],
+            ),
+            const SizedBox(height: 16),
 
             // Email
             TextField(
@@ -445,14 +630,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: 'Ваш Email *',
-                hintText: 'example@mail.ru',
+                hintText: 'example@mail.ru или с temp-mail.io',
                 prefixIcon: const Icon(Icons.email_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Спонсор (необязательно)
             TextField(
@@ -467,9 +652,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Кнопка отправки кода
+            // Кнопка отправки кода вручную
             ElevatedButton(
               onPressed: _isLoading ? null : _handleSendPin,
               style: ElevatedButton.styleFrom(
@@ -480,7 +665,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: _isLoading
+              child: _isLoading && !_isAutoMode
                   ? const SizedBox(
                       width: 22,
                       height: 22,
@@ -496,6 +681,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+            ),
+
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  launchUrl(
+                    Uri.parse('https://infinity-mlm.com/user/registration'),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                icon: const Icon(Icons.open_in_browser, size: 16),
+                label: const Text(
+                  'Открыть форму напрямую на сайте Инфинити',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
             ),
           ],
         ),
@@ -522,7 +724,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               text: TextSpan(
                 style: TextStyle(fontSize: 13, color: theme.hintColor),
                 children: [
-                  const TextSpan(text: 'Мы отправили код на адрес:\n'),
+                  const TextSpan(text: 'Письмо отправлено на адрес:\n'),
                   TextSpan(
                     text: _emailController.text,
                     style: TextStyle(
@@ -533,6 +735,66 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Подсказка о доставке
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 18, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Почтовая очередь Инфинити отправляет код за 1–2 мин. Обязательно проверьте «Спам».',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            if (_autoStatus.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border:
+                      Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.amber,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _autoStatus,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 20),
 
             // Поле ввода PIN-кода
@@ -565,7 +827,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       size: 16, color: Colors.grey),
                   const SizedBox(width: 6),
                   Text(
-                    'Повторный код через $_resendCountdown сек',
+                    'Повторный запрос через $_resendCountdown сек',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ] else ...[
@@ -616,6 +878,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   _currentStep = 1;
                   _pinController.clear();
                   _errorMessage = null;
+                  _autoStatus = '';
                 });
               },
               child: const Text('Изменить email'),
