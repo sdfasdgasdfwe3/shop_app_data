@@ -704,6 +704,47 @@ class _PromoTabState extends State<PromoTab> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('🌹 Красный')),
+                          selected: _promoTheme == 'red',
+                          selectedColor: const Color(0xFFDC2626),
+                          labelStyle: TextStyle(
+                            color: _promoTheme == 'red' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoTheme = 'red');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('🌸 Светло-красный')),
+                          selected: _promoTheme == 'light_red',
+                          selectedColor: const Color(0xFFE11D48),
+                          labelStyle: TextStyle(
+                            color:
+                                _promoTheme == 'light_red' ? Colors.white : null,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _promoTheme = 'light_red');
+                              _savePromoSettings();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 14),
 
                   // Выбор отображения цены

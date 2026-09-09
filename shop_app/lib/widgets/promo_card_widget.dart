@@ -185,6 +185,94 @@ class PromoCardWidget extends StatelessWidget {
         contactIconColor = const Color(0xFF059669);
         break;
 
+      case 'red': // Насыщенный красный (рубиновый)
+        bgDecoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const RadialGradient(
+            center: Alignment(0.0, -0.4),
+            radius: 1.1,
+            colors: [
+              Color(0xFF5B1313),
+              Color(0xFF380C0C),
+              Color(0xFF180505),
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFFF87171).withValues(alpha: 0.45),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF240303).withValues(alpha: 0.65),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
+            ),
+          ],
+        );
+        primaryAccent = const Color(0xFFF87171);
+        brandBadgeBg = const Color(0xFF3D0B0B);
+        brandBadgeBorder = const Color(0xFFF87171);
+        categoryBadgeBg = const Color(0xFF520F0F);
+        categoryBadgeBorder = const Color(0xFFF87171).withValues(alpha: 0.4);
+        categoryBadgeText = const Color(0xFFFECACA);
+        photoFrameBg = const Color(0xFF3D0B0B);
+        photoFrameBorder = const Color(0xFFF87171).withValues(alpha: 0.5);
+        titleColor = Colors.white;
+        bulletsTextColor = const Color(0xFFFEE2E2);
+        bulletIconColor = const Color(0xFFF87171);
+        bulletsBoxBg = const Color(0xFF380C0C).withValues(alpha: 0.75);
+        bulletsBoxBorder = const Color(0xFF991B1B);
+        contactBoxBg = const Color(0xFF3D0B0B);
+        contactBoxBorder = const Color(0xFF991B1B);
+        contactLabelColor = const Color(0xFFFECACA);
+        contactPhoneColor = Colors.white;
+        contactIconColor = const Color(0xFFF87171);
+        break;
+
+      case 'light_red': // Светло-красный (нежно-коралловый светлый)
+        bgDecoration = BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFFFF1F2),
+              Color(0xFFFFE4E6),
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFFFDA4AF),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE11D48).withValues(alpha: 0.1),
+              blurRadius: 25,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        );
+        primaryAccent = const Color(0xFFE11D48);
+        brandBadgeBg = Colors.white;
+        brandBadgeBorder = const Color(0xFFE11D48);
+        categoryBadgeBg = Colors.white;
+        categoryBadgeBorder = const Color(0xFFFECDD3);
+        categoryBadgeText = const Color(0xFF9F1239);
+        photoFrameBg = Colors.white;
+        photoFrameBorder = const Color(0xFFFDA4AF);
+        titleColor = const Color(0xFF0F172A);
+        bulletsTextColor = const Color(0xFF1E293B);
+        bulletIconColor = const Color(0xFFE11D48);
+        bulletsBoxBg = Colors.white.withValues(alpha: 0.88);
+        bulletsBoxBorder = const Color(0xFFFECDD3);
+        contactBoxBg = const Color(0xFFFFF1F2);
+        contactBoxBorder = const Color(0xFFFECDD3);
+        contactLabelColor = const Color(0xFF9F1239);
+        contactPhoneColor = const Color(0xFF0F172A);
+        contactIconColor = const Color(0xFFE11D48);
+        break;
+
       case 'dark': // Изумрудный (по умолчанию темный)
       default:
         bgDecoration = BoxDecoration(
@@ -231,7 +319,7 @@ class PromoCardWidget extends StatelessWidget {
         break;
     }
 
-    final isDarkTheme = theme == 'dark' || theme == 'blue';
+    final isDarkTheme = theme == 'dark' || theme == 'blue' || theme == 'red';
 
     // Блок цены и баллов
     Widget priceSection;
@@ -251,6 +339,14 @@ class PromoCardWidget extends StatelessWidget {
           priceBg = const Color(0xFFD97706);
           priceTextColor = Colors.white;
           priceSubColor = const Color(0xFFFEF3C7);
+        } else if (theme == 'red') {
+          priceBg = const Color(0xFFDC2626);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFFEF2F2);
+        } else if (theme == 'light_red') {
+          priceBg = const Color(0xFFE11D48);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFFFE4E6);
         } else if (theme == 'blue' || theme == 'dark') {
           priceBg = const Color(0xFFF59E0B);
           priceTextColor = const Color(0xFF0F172A);
@@ -270,6 +366,14 @@ class PromoCardWidget extends StatelessWidget {
           priceBg = const Color(0xFF0284C7);
           priceTextColor = Colors.white;
           priceSubColor = const Color(0xFFE0F2FE);
+        } else if (theme == 'red') {
+          priceBg = const Color(0xFFB91C1C);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFFEE2E2);
+        } else if (theme == 'light_red') {
+          priceBg = const Color(0xFFBE123C);
+          priceTextColor = Colors.white;
+          priceSubColor = const Color(0xFFFFF1F2);
         } else if (theme == 'dark') {
           priceBg = const Color(0xFF10B981);
           priceTextColor = const Color(0xFF0F172A);
@@ -295,6 +399,16 @@ class PromoCardWidget extends StatelessWidget {
           pointsBg = const Color(0xFFF0F9FF);
           pointsBorder = const Color(0xFFBAE6FD);
           pointsTextColor = const Color(0xFF0369A1);
+          break;
+        case 'red':
+          pointsBg = const Color(0xFF3D0B0B);
+          pointsBorder = const Color(0xFFF87171).withValues(alpha: 0.5);
+          pointsTextColor = const Color(0xFFFECACA);
+          break;
+        case 'light_red':
+          pointsBg = const Color(0xFFFFF1F2);
+          pointsBorder = const Color(0xFFFECDD3);
+          pointsTextColor = const Color(0xFF9F1239);
           break;
         case 'light':
           pointsBg = const Color(0xFFF0FDF4);
@@ -411,6 +525,16 @@ class PromoCardWidget extends StatelessWidget {
           break;
         case 'sky':
           noneBg = const Color(0xFF0284C7);
+          noneBorder = Colors.transparent;
+          noneText = Colors.white;
+          break;
+        case 'red':
+          noneBg = const Color(0xFFDC2626).withValues(alpha: 0.25);
+          noneBorder = const Color(0xFFF87171);
+          noneText = const Color(0xFFFCA5A5);
+          break;
+        case 'light_red':
+          noneBg = const Color(0xFFE11D48);
           noneBorder = Colors.transparent;
           noneText = Colors.white;
           break;
