@@ -402,6 +402,47 @@ class _HomeScreenState extends State<HomeScreen> {
           _sendRetailPrice = newRetail;
         });
       },
+      onOpenAdmin: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) => Scaffold(
+              appBar: AppBar(
+                title: const Text('Панель администратора'),
+              ),
+              body: ProfileTab(
+                isLoggedIn: _isLoggedIn,
+                currentUser: _currentUser,
+                appData: appData,
+                userData: userData,
+                dataManager: dataManager,
+                githubToken: _githubToken,
+                onLogin: (user, rememberMe) {
+                  setState(() {
+                    _isLoggedIn = true;
+                    _currentUser = user;
+                  });
+                  if (rememberMe) {
+                    _saveLogin(user);
+                  } else {
+                    _clearSavedLogin();
+                  }
+                },
+                onLogout: () {
+                  setState(() {
+                    _isLoggedIn = false;
+                    _currentUser = '';
+                  });
+                  _clearSavedLogin();
+                },
+                onUserDataChanged: () {
+                  setState(() {});
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -457,40 +498,10 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
       case 4:
+      default:
         return PromoTab(
           appData: appData,
           repoUrl: dataManager.repoUrl,
-        );
-      case 5:
-      default:
-        return ProfileTab(
-          isLoggedIn: _isLoggedIn,
-          currentUser: _currentUser,
-          appData: appData,
-          userData: userData,
-          dataManager: dataManager,
-          githubToken: _githubToken,
-          onLogin: (user, rememberMe) {
-            setState(() {
-              _isLoggedIn = true;
-              _currentUser = user;
-            });
-            if (rememberMe) {
-              _saveLogin(user);
-            } else {
-              _clearSavedLogin();
-            }
-          },
-          onLogout: () {
-            setState(() {
-              _isLoggedIn = false;
-              _currentUser = '';
-            });
-            _clearSavedLogin();
-          },
-          onUserDataChanged: () {
-            setState(() {});
-          },
         );
     }
   }
@@ -646,17 +657,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Icon(Icons.auto_awesome),
                     ),
                     label: 'Именное',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.person_outline),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.person),
-                    ),
-                    label: 'Профиль',
                   ),
                 ],
               ),

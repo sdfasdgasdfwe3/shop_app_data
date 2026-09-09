@@ -7,6 +7,7 @@ class SettingsBottomSheet {
     required bool hidePricePoints,
     required bool sendRetailPrice,
     required void Function(bool newHide, bool newRetail) onSettingsChanged,
+    VoidCallback? onOpenAdmin,
   }) {
     showModalBottomSheet(
       context: context,
@@ -106,6 +107,28 @@ class SettingsBottomSheet {
                       ],
                     ),
                   ),
+                  if (onOpenAdmin != null) ...[
+                    const SizedBox(height: 16),
+                    ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      tileColor: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey.shade900
+                          : Colors.grey.shade100,
+                      leading: const Icon(Icons.admin_panel_settings_outlined),
+                      title: const Text(
+                        'Панель администратора',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: const Text('Публикация статей и отзывов'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                      onTap: () {
+                        Navigator.pop(context);
+                        onOpenAdmin();
+                      },
+                    ),
+                  ],
                 ],
               ),
             );
