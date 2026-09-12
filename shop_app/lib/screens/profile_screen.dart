@@ -20,20 +20,29 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const String apiBaseUrl = 'https://91-108-239-242.sslip.io';
+  static const String apiBaseUrl = 'https://znam.space';
 
   Map<String, dynamic>? _savedUser;
   bool _isLoadingUser = true;
 
   // Регистрационная сессия
-  bool _isInitializing = false;
+  bool _isInitializingAuto = false;
+  bool _isSendingPin = false;
+  bool _isVerifyingPin = false;
   bool _isSubmitting = false;
+
+  bool _pinSent = false;
+  String? _customEmailSentTo;
+
   String? _sessionId;
-  String? _generatedEmail;
+  String? _activeEmail;
   String? _captchaBase64;
   String? _errorMessage;
 
   final _formKey = GlobalKey<FormState>();
+  final _customEmailController = TextEditingController();
+  final _pinController = TextEditingController();
+
   final _lastNameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _patronymicController = TextEditingController();
@@ -53,6 +62,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _customEmailController.dispose();
+    _pinController.dispose();
     _lastNameController.dispose();
     _firstNameController.dispose();
     _patronymicController.dispose();
@@ -84,37 +95,134 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _startRegistration() async {
+  // 1. Отправка PIN-кода на свой email
+  Future<void> _sendCustomEmailPin() async {
+    final email = _customEmailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() {
+        _errorMessage = 'Введите корректный адрес электронной почты';
+      });
+      return;
+    }
+
     setState(() {
-      _isInitializing = true;
+      _isSendingPin = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$apiBaseUrl/api/session/start'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email}),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        setState(() {
+          _sessionId = data['sessionId'];
+          _activeEmail = email;
+          _customEmailSentTo = email;
+          _pinSent = true;
+          _isSendingPin = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Код подтверждения отправлен на $email'),
+              backgroundColor: Colors.blue.shade700,
+            ),
+          );
+        }
+      } else {
+        throw Exception(data['error'] ?? 'Не удалось отправить код');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSendingPin = false;
+          _errorMessage = e.toString().replaceAll('Exception:', '').trim();
+        });
+      }
+    }
+  }
+
+  // 2. Подтверждение PIN-кода
+  Future<void> _verifyPinCode() async {
+    final pin = _pinController.text.trim();
+    if (pin.length != 6) {
+      setState(() {
+        _errorMessage = 'Введите 6-значный код из письма';
+      });
+      return;
+    }
+    if (_sessionId == null) return;
+
+    setState(() {
+      _isVerifyingPin = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$apiBaseUrl/api/session/verify-pin'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'sessionId': _sessionId,
+              'pin': pin,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        setState(() {
+          _captchaBase64 = data['captcha'];
+          _isVerifyingPin = false;
+        });
+      } else {
+        throw Exception(data['error'] ?? 'Неверный код подтверждения');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isVerifyingPin = false;
+          _errorMessage = e.toString().replaceAll('Exception:', '').trim();
+        });
+      }
+    }
+  }
+
+  // 3. Автоматическая генерация временной почты
+  Future<void> _startAutoRegistration() async {
+    setState(() {
+      _isInitializingAuto = true;
       _errorMessage = null;
     });
 
     try {
       final response = await http
           .get(Uri.parse('$apiBaseUrl/api/session'))
-          .timeout(const Duration(seconds: 60));
+          .timeout(const Duration(seconds: 80));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          setState(() {
-            _sessionId = data['sessionId'];
-            _generatedEmail = data['email'];
-            _captchaBase64 = data['captcha'];
-            _isInitializing = false;
-          });
-          return;
-        } else {
-          throw Exception(data['error'] ?? 'Ошибка инициализации сессии');
-        }
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        setState(() {
+          _sessionId = data['sessionId'];
+          _activeEmail = data['email'];
+          _captchaBase64 = data['captcha'];
+          _isInitializingAuto = false;
+        });
       } else {
-        throw Exception('Сервер вернул код ${response.statusCode}');
+        throw Exception(data['error'] ?? 'Не удалось получить код на временную почту');
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isInitializing = false;
+          _isInitializingAuto = false;
           _errorMessage = e.toString().replaceAll('Exception:', '').trim();
         });
       }
@@ -128,14 +236,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .get(Uri.parse('$apiBaseUrl/api/captcha?sessionId=$_sessionId'))
           .timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['captcha'] != null) {
-          setState(() {
-            _captchaBase64 = data['captcha'];
-            _captchaController.clear();
-          });
-        }
+      final data = jsonDecode(response.body);
+      if (data['success'] == true && data['captcha'] != null) {
+        setState(() {
+          _captchaBase64 = data['captcha'];
+          _captchaController.clear();
+        });
       }
     } catch (e) {
       debugPrint('Ошибка обновления капчи: $e');
@@ -174,9 +280,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (data['success'] == true) {
         final userData = {
-          'email': data['email'] ?? _generatedEmail,
+          'email': data['email'] ?? _activeEmail,
           'password': _passwordController.text.trim(),
           'lastName': _lastNameController.text.trim(),
           'firstName': _firstNameController.text.trim(),
@@ -248,6 +354,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _savedUser = null;
         _sessionId = null;
+        _pinSent = false;
+        _activeEmail = null;
+        _captchaBase64 = null;
       });
       widget.onLoginStateChanged?.call();
     }
@@ -269,7 +378,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 constraints: const BoxConstraints(maxWidth: 500),
                 child: _savedUser != null
                     ? _buildProfileCard()
-                    : _sessionId != null
+                    : _captchaBase64 != null
                         ? _buildRegistrationForm()
                         : _buildInitialCard(),
               ),
@@ -313,7 +422,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                  child: const Icon(Icons.person, color: Colors.blue, size: 32),
+                  child: const Icon(Icons.person, size: 32, color: Colors.blue),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -321,13 +430,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        name.isNotEmpty ? name : 'Партнер НПК ИНФИНИТИ',
+                        name.isNotEmpty ? name : 'Партнер Инфинити',
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         email,
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                        style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -335,43 +445,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             const Divider(height: 32),
-            if (ticket.isNotEmpty) ...[
-              _buildInfoRow('Номер билета/ID', ticket, isCopyable: true),
-              const SizedBox(height: 12),
-            ],
-            if (phone.isNotEmpty) ...[
-              _buildInfoRow('Телефон', phone),
-              const SizedBox(height: 12),
-            ],
-            if (city.isNotEmpty) ...[
-              _buildInfoRow('Город', city),
-              const SizedBox(height: 12),
-            ],
-            if (password.isNotEmpty) ...[
-              _buildInfoRow('Пароль', password, isCopyable: true),
-              const SizedBox(height: 24),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  final url = Uri.parse('https://infinity-mlm.com/user/myaccount');
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                  }
-                },
-                icon: const Icon(Icons.open_in_new, size: 18),
-                label: const Text('Перейти на infinity-mlm.com'),
-              ),
-            ),
+            _buildInfoRow('Телефон', phone.isNotEmpty ? '+7 $phone' : '—'),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout, size: 18, color: Colors.red),
-                label: const Text('Выйти / Сменить аккаунт', style: TextStyle(color: Colors.red)),
-              ),
+            _buildInfoRow('Город', city.isNotEmpty ? city : '—'),
+            const SizedBox(height: 12),
+            _buildInfoRow('E-mail (логин)', email, isCopyable: true),
+            const SizedBox(height: 12),
+            _buildInfoRow('Пароль', password, isCopyable: true),
+            if (ticket.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildInfoRow('ID тикета', ticket, isCopyable: true),
+            ],
+            const Divider(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    label: const Text('Кабинет Инфинити'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () async {
+                      final url = Uri.parse('https://infinity-mlm.com/user/login');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton.outlined(
+                  icon: const Icon(Icons.logout, color: Colors.red),
+                  tooltip: 'Выйти из аккаунта',
+                  onPressed: _logout,
+                ),
+              ],
             ),
           ],
         ),
@@ -416,14 +525,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.account_circle, size: 48, color: Colors.blue),
               ),
-              child: const Icon(Icons.account_circle, size: 48, color: Colors.blue),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -431,13 +543,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
-              'Создайте аккаунт партнера прямо из приложения. Подтверждение почты произойдет автоматически через наш сервер.',
+              'Создайте официальный партнерский аккаунт прямо из приложения.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.4),
             ),
             const SizedBox(height: 24),
+
             if (_errorMessage != null) ...[
               Container(
                 padding: const EdgeInsets.all(12),
@@ -454,26 +567,140 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton(
-                onPressed: _isInitializing ? null : _startRegistration,
-                child: _isInitializing
-                    ? const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          ),
-                          SizedBox(width: 12),
-                          Text('Подтверждение почты (~20 сек)...'),
-                        ],
-                      )
-                    : const Text('Начать регистрацию', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+
+            // Вариант 1: Свой Email (рекомендуется)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.2)),
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Регистрация на ваш E-mail',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'На вашу почту мгновенно придет 6-значный код подтверждения.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _customEmailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Ваш E-mail',
+                      hintText: 'example@mail.ru',
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (!_pinSent) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: FilledButton.icon(
+                        icon: _isSendingPin
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.send_rounded, size: 18),
+                        label: Text(_isSendingPin ? 'Отправка кода...' : 'Получить код активации'),
+                        onPressed: (_isSendingPin || _isInitializingAuto) ? null : _sendCustomEmailPin,
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Код отправлен на $_customEmailSentTo',
+                              style: const TextStyle(fontSize: 12, color: Colors.green),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _pinController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      decoration: InputDecoration(
+                        labelText: '6-значный код из письма',
+                        prefixIcon: const Icon(Icons.pin),
+                        counterText: '',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: FilledButton(
+                        onPressed: _isVerifyingPin ? null : _verifyPinCode,
+                        child: _isVerifyingPin
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Подтвердить код'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('или', style: TextStyle(color: Colors.grey)),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+            ),
+
+            // Вариант 2: Автоматический временный ящик
+            OutlinedButton.icon(
+              icon: _isInitializingAuto
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_mode_rounded, size: 18),
+              label: Text(
+                _isInitializingAuto ? 'Получение почты и кода (~30 сек)...' : 'Сгенерировать временный e-mail (авто)',
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: (_isInitializingAuto || _isSendingPin) ? null : _startAutoRegistration,
             ),
           ],
         ),
@@ -503,171 +730,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Анкета партнера',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      setState(() {
-                        _sessionId = null;
-                      });
-                    },
-                    tooltip: 'Отмена',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Email подтвержден: $_generatedEmail',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.green),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _lastNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Фамилия *',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Укажите фамилию' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _firstNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Имя *',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Укажите имя' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _patronymicController,
-                decoration: const InputDecoration(
-                  labelText: 'Отчество (опционально)',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _cityController,
-                decoration: const InputDecoration(
-                  labelText: 'Город *',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Укажите город' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Телефон *',
-                  hintText: 'Например: 9991234567',
-                  prefixText: '+7 ',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Укажите телефон';
-                  final digits = v.replaceAll(RegExp(r'\D'), '');
-                  if (digits.length < 10) return 'Минимум 10 цифр';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Пароль *',
-                  border: const OutlineInputBorder(),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
-                ),
-                validator: (v) => v == null || v.length < 6 ? 'Минимум 6 символов' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _sponsorController,
-                decoration: const InputDecoration(
-                  labelText: 'ID Спонсора (если есть)',
-                  hintText: 'Оставьте пустым, если нет',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _captchaController,
-                      keyboardType: TextInputType.text,
-                      decoration: const InputDecoration(
-                        labelText: 'Код с картинки *',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Введите код' : null,
-                    ),
+                    child: const Icon(Icons.verified_user, color: Colors.green, size: 24),
                   ),
                   const SizedBox(width: 12),
-                  if (captchaBytes != null)
-                    Container(
-                      height: 48,
-                      width: 120,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade400),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(5),
-                        child: Image.memory(captchaBytes, fit: BoxFit.fill),
-                      ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'E-mail подтвержден!',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          _activeEmail ?? '',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: _reloadCaptcha,
-                    tooltip: 'Обновить картинку',
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const Divider(height: 28),
+
               if (_errorMessage != null) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -676,23 +771,155 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.red, fontSize: 13),
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 16),
               ],
+
+              TextFormField(
+                controller: _lastNameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Фамилия *',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Укажите фамилию' : null,
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _firstNameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Имя *',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Укажите имя' : null,
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _patronymicController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Отчество (необязательно)',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _cityController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Город *',
+                  prefixIcon: Icon(Icons.location_city_outlined),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Укажите город' : null,
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Телефон *',
+                  hintText: '9001234567',
+                  prefixText: '+7 ',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Укажите номер телефона';
+                  final digits = v.replaceAll(RegExp(r'\D'), '');
+                  if (digits.length < 10) return 'Минимум 10 цифр';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Пароль для кабинета *',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Придумайте пароль';
+                  if (v.length < 4) return 'Минимум 4 символа';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _sponsorController,
+                decoration: const InputDecoration(
+                  labelText: 'ID / логин спонсора (необязательно)',
+                  prefixIcon: Icon(Icons.group_outlined),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Блок капчи
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (captchaBytes != null)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.memory(
+                              captchaBytes,
+                              height: 48,
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                        else
+                          const SizedBox(
+                            width: 100,
+                            height: 48,
+                            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.refresh),
+                          tooltip: 'Обновить код с картинки',
+                          onPressed: _reloadCaptcha,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _captchaController,
+                      decoration: const InputDecoration(
+                        labelText: 'Символы с картинки *',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите код с картинки' : null,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
               SizedBox(
-                width: double.infinity,
                 height: 48,
                 child: FilledButton(
                   onPressed: _isSubmitting ? null : _submitRegistration,
