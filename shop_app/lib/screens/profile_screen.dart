@@ -297,14 +297,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final data = jsonDecode(response.body);
 
       if (data['success'] == true) {
+        final partnerId = (data['partnerId'] ?? '').toString().trim();
+        final email = (data['email'] ?? _activeEmail ?? '').toString().trim();
+        final password = _passwordController.text.trim();
+
         final userData = {
-          'email': data['email'] ?? _activeEmail,
-          'password': _passwordController.text.trim(),
+          'email': email,
+          'password': password,
           'lastName': _lastNameController.text.trim(),
           'firstName': _firstNameController.text.trim(),
           'city': _cityController.text.trim(),
           'phone': _phoneController.text.trim(),
-          'ticket': data['ticket'] ?? '',
+          'ticket': (data['ticket'] ?? '').toString().trim(),
+          'partnerId': partnerId,
           'registeredAt': DateTime.now().toIso8601String(),
         };
 
@@ -318,12 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _isSubmitting = false;
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Регистрация успешно завершена!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          _showRegistrationSuccessDialog(partnerId, email, password);
           widget.onLoginStateChanged?.call();
         }
       } else {
@@ -418,6 +418,174 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showRegistrationSuccessDialog(String partnerId, String email, String password) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 28),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Поздравляем с регистрацией!',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Вы успешно зарегистрированы в НПК ИНФИНИТИ!',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            if (partnerId.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ваш ID номер партнера:',
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          partnerId,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: partnerId));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('ID партнера скопирован'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(Icons.copy, size: 20, color: Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Логин: $email',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: email));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Логин скопирован'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.copy, size: 16, color: Colors.blue),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Пароль: $password',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: password));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Пароль скопирован'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.copy, size: 16, color: Colors.blue),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Данные сохранены в вашем профиле приложения.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Отлично'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProfileCard() {
     final email = _savedUser!['email'] ?? '';
     final name = '${_savedUser!['lastName'] ?? ''} ${_savedUser!['firstName'] ?? ''}'.trim();
@@ -425,6 +593,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final city = _savedUser!['city'] ?? '';
     final password = _savedUser!['password'] ?? '';
     final ticket = _savedUser!['ticket'] ?? '';
+    final partnerId = (_savedUser!['partnerId'] ?? '').toString().trim();
 
     return Card(
       elevation: 0,
@@ -465,6 +634,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             const Divider(height: 32),
+            if (partnerId.isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ваш ID партнера',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          partnerId,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, color: Colors.blue),
+                      tooltip: 'Скопировать ID партнера',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: partnerId));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('ID партнера скопирован'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
             _buildInfoRow('Телефон', phone.isNotEmpty ? '+7 $phone' : '—'),
             const SizedBox(height: 12),
             _buildInfoRow('Город', city.isNotEmpty ? city : '—'),
@@ -472,6 +693,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildInfoRow('E-mail (логин)', email, isCopyable: true),
             const SizedBox(height: 12),
             _buildInfoRow('Пароль', password, isCopyable: true),
+            if (partnerId.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildInfoRow('ID партнера', partnerId, isCopyable: true),
+            ],
             if (ticket.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildInfoRow('ID тикета', ticket, isCopyable: true),
