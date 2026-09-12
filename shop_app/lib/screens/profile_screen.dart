@@ -6,7 +6,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final bool showAppBar;
+  final VoidCallback? onLoginStateChanged;
+
+  const ProfileScreen({
+    super.key,
+    this.showAppBar = true,
+    this.onLoginStateChanged,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -195,6 +202,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: Colors.green,
             ),
           );
+          widget.onLoginStateChanged?.call();
         }
       } else {
         if (data['newCaptcha'] != null) {
@@ -241,31 +249,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _savedUser = null;
         _sessionId = null;
       });
+      widget.onLoginStateChanged?.call();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bodyContent = _isLoadingUser
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: widget.showAppBar ? 20 : 120,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: _savedUser != null
+                    ? _buildProfileCard()
+                    : _sessionId != null
+                        ? _buildRegistrationForm()
+                        : _buildInitialCard(),
+              ),
+            ),
+          );
+
+    if (!widget.showAppBar) {
+      return bodyContent;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Профиль'),
         centerTitle: true,
       ),
-      body: _isLoadingUser
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 500),
-                  child: _savedUser != null
-                      ? _buildProfileCard()
-                      : _sessionId != null
-                          ? _buildRegistrationForm()
-                          : _buildInitialCard(),
-                ),
-              ),
-            ),
+      body: bodyContent,
     );
   }
 

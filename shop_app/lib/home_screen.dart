@@ -437,10 +437,15 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
       case 4:
-      default:
         return PromoTab(
           appData: appData,
           repoUrl: dataManager.repoUrl,
+        );
+      case 5:
+      default:
+        return ProfileScreen(
+          showAppBar: false,
+          onLoginStateChanged: _checkSavedLogin,
         );
     }
   }
@@ -476,22 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(
-              _isLoggedIn ? Icons.account_circle : Icons.account_circle_outlined,
-              color: _isLoggedIn ? Theme.of(context).colorScheme.primary : null,
-            ),
-            tooltip: 'Профиль / Регистрация',
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              );
-              _checkSavedLogin();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Настройки',
+            icon: const Icon(Icons.settings),
             onPressed: _openSettings,
           ),
           ValueListenableBuilder<ThemeMode>(
@@ -611,6 +601,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Icon(Icons.auto_awesome),
                     ),
                     label: 'Именное',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: const EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(_isLoggedIn ? Icons.account_circle : Icons.person_outline),
+                    ),
+                    activeIcon: Padding(
+                      padding: const EdgeInsets.only(bottom: 4, top: 8),
+                      child: Icon(_isLoggedIn ? Icons.account_circle : Icons.person),
+                    ),
+                    label: 'Профиль',
                   ),
                 ],
               ),
