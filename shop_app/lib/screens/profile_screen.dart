@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,6 +28,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Регистрационная сессия
   bool _isInitializingAuto = false;
+  int _autoSecondsElapsed = 0;
+  Timer? _autoTimer;
   bool _isSendingPin = false;
   bool _isVerifyingPin = false;
   bool _isSubmitting = false;
@@ -72,6 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _passwordController.dispose();
     _sponsorController.dispose();
     _captchaController.dispose();
+    _autoTimer?.cancel();
     super.dispose();
   }
 
@@ -198,15 +202,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // 3. Автоматическая генерация временной почты
   Future<void> _startAutoRegistration() async {
+    _autoTimer?.cancel();
     setState(() {
       _isInitializingAuto = true;
+      _autoSecondsElapsed = 0;
       _errorMessage = null;
+    });
+
+    _autoTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _autoSecondsElapsed++;
+        });
+      }
     });
 
     try {
       final response = await http
           .get(Uri.parse('$apiBaseUrl/api/session'))
-          .timeout(const Duration(seconds: 80));
+          .timeout(const Duration(seconds: 140));
 
       final data = jsonDecode(response.body);
       if (data['success'] == true) {
@@ -226,6 +240,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _errorMessage = e.toString().replaceAll('Exception:', '').trim();
         });
       }
+    } finally {
+      _autoTimer?.cancel();
     }
   }
 
@@ -695,13 +711,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     )
                   : const Icon(Icons.auto_mode_rounded, size: 18),
               label: Text(
-                _isInitializingAuto ? 'Получение почты и кода (~30 сек)...' : 'Сгенерировать временный e-mail (авто)',
+                _isInitializingAuto
+                    ? 'Ожидание кода: $_autoSecondsElapsed сек (до 2 мин)...'
+                    : 'Сгенерировать временный e-mail (авто)',
               ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               onPressed: (_isInitializingAuto || _isSendingPin) ? null : _startAutoRegistration,
             ),
+            if (_isInitializingAuto) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Сервер ожидает письмо от НПК ИНФИНИТИ (обычно занимает 60–90 сек). Пожалуйста, не закрывайте страницу...',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+              ),
+            ],
           ],
         ),
       ),
