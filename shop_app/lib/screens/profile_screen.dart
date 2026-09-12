@@ -613,7 +613,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final phone = _savedUser!['phone'] ?? '';
     final city = _savedUser!['city'] ?? '';
     final password = _savedUser!['password'] ?? '';
-    final ticket = _savedUser!['ticket'] ?? '';
     final partnerId = (_savedUser!['partnerId'] ?? '').toString().trim();
 
     return Card(
@@ -717,10 +716,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (partnerId.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildInfoRow('ID партнера', partnerId, isCopyable: true),
-            ],
-            if (ticket.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildInfoRow('ID тикета', ticket, isCopyable: true),
             ],
             const Divider(height: 32),
             Row(
