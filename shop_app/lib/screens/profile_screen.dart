@@ -265,8 +265,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _submitRegistration() async {
+    if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
-    if (_sessionId == null) return;
+    if (_sessionId == null) {
+      setState(() {
+        _errorMessage = 'Сессия устарела или не найдена. Начните регистрацию заново.';
+      });
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
@@ -380,6 +386,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       widget.onLoginStateChanged?.call();
     }
+  }
+
+  void _resetRegistration() {
+    setState(() {
+      _sessionId = null;
+      _activeEmail = null;
+      _captchaBase64 = null;
+      _errorMessage = null;
+      _pinSent = false;
+      _customEmailSentTo = null;
+      _customEmailController.clear();
+      _pinController.clear();
+      _captchaController.clear();
+      _isSubmitting = false;
+    });
   }
 
   @override
@@ -1026,9 +1047,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                   ),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (_errorMessage!.toLowerCase().contains('устарела') ||
+                          _errorMessage!.toLowerCase().contains('не найдена') ||
+                          _errorMessage!.toLowerCase().contains('заново')) ...[
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: _resetRegistration,
+                          icon: const Icon(Icons.refresh, size: 16, color: Colors.red),
+                          label: const Text(
+                            'Начать регистрацию заново',
+                            style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
