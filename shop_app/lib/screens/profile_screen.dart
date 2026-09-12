@@ -337,9 +337,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String msg = e.toString().replaceAll('Exception:', '').trim();
+        if (msg.contains('<html') || msg.contains('<!DOCTYPE')) {
+          msg = 'Сервер Инфинити отклонил регистрацию. Проверьте правильность введенных данных или обновите капчу.';
+        }
         setState(() {
           _isSubmitting = false;
-          _errorMessage = e.toString().replaceAll('Exception:', '').trim();
+          _errorMessage = msg;
         });
       }
     }

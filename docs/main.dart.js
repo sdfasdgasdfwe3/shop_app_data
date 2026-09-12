@@ -99222,31 +99222,31 @@ break
 case 6:case 1:return A.D(q,r)
 case 2:return A.C(o.at(-1),r)}})
 return A.E($async$A2,r)},
-ru(){var s=0,r=A.F(t.H),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3
-var $async$ru=A.B(function(a4,a5){if(a4===1){o.push(a5)
-s=p}for(;;)switch(s){case 0:a2=n.CW.gR()
-a2.e=!0
-a2.RF()
-g=a2.c
+ru(){var s=0,r=A.F(t.H),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4
+var $async$ru=A.B(function(a5,a6){if(a5===1){o.push(a6)
+s=p}for(;;)switch(s){case 0:a3=n.CW.gR()
+a3.e=!0
+a3.RF()
+g=a3.c
 g.toString
 f=A.jc(g)
 f.toString
-if(!a2.AD(f)){s=1
+if(!a3.AD(f)){s=1
 break}if(n.at==null){s=1
 break}n.O(new A.az4(n))
 p=4
-a2=n.db
+a3=n.db
 g=n.dx
 e=n.fr
 d=n.fx
 c=n.fy
 b=t.N
-m=A.ak(["sessionId",n.at,"lastName",B.c.b1(a2.a.a),"firstName",B.c.b1(g.a.a),"patronymic",B.c.b1(n.dy.a.a),"city",B.c.b1(e.a.a),"phone",B.c.b1(d.a.a),"password",B.c.b1(c.a.a),"sponsor",B.c.b1(n.go.a.a),"captcha",B.c.b1(n.id.a.a)],b,t.ob)
+m=A.ak(["sessionId",n.at,"lastName",B.c.b1(a3.a.a),"firstName",B.c.b1(g.a.a),"patronymic",B.c.b1(n.dy.a.a),"city",B.c.b1(e.a.a),"phone",B.c.b1(d.a.a),"password",B.c.b1(c.a.a),"sponsor",B.c.b1(n.go.a.a),"captcha",B.c.b1(n.id.a.a)],b,t.ob)
 a=A.dm("https://znam.space/api/register",0,null)
 a0=A.ak(["Content-Type","application/json"],b,b)
 s=7
 return A.q(A.aJD(a,B.a0.jC(m,null),a0).od(0,B.ln),$async$ru)
-case 7:l=a5
+case 7:l=a6
 a0=l
 k=B.a0.fm(0,A.js(A.jm(a0.e)).d6(0,a0.w),null)
 s=J.d(J.aC(k,"success"),!0)?8:10
@@ -99254,16 +99254,16 @@ break
 case 8:a=J.aC(k,"email")
 if(a==null)a=n.ax
 c=B.c.b1(c.a.a)
-a2=B.c.b1(a2.a.a)
+a3=B.c.b1(a3.a.a)
 g=B.c.b1(g.a.a)
 e=B.c.b1(e.a.a)
 d=B.c.b1(d.a.a)
 a0=J.aC(k,"ticket")
 if(a0==null)a0=""
-j=A.ak(["email",a,"password",c,"lastName",a2,"firstName",g,"city",e,"phone",d,"ticket",a0,"registeredAt",new A.ff(Date.now(),0,!1).a24()],b,t.z)
+j=A.ak(["email",a,"password",c,"lastName",a3,"firstName",g,"city",e,"phone",d,"ticket",a0,"registeredAt",new A.ff(Date.now(),0,!1).a24()],b,t.z)
 s=11
 return A.q(A.dI(),$async$ru)
-case 11:i=a5
+case 11:i=a6
 s=12
 return A.q(i.f1("String","saved_auth_user",B.a0.jC(j,null)),$async$ru)
 case 12:if(n.c!=null){n.O(new A.az5(n,j))
@@ -99271,17 +99271,20 @@ n.c.ab(t.Pu).f.j9(B.Zm)
 n.a.d.$0()}s=9
 break
 case 10:if(J.aC(k,"newCaptcha")!=null)n.O(new A.az6(n,k))
-a2=J.aC(k,"error")
-a2=A.cC(a2==null?"\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0438":a2)
-throw A.e(a2)
+a3=J.aC(k,"error")
+a3=A.cC(a3==null?"\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0438":a3)
+throw A.e(a3)
 case 9:p=2
 s=6
 break
 case 4:p=3
-a3=o.pop()
-h=A.a5(a3)
-if(n.c!=null)n.O(new A.az7(n,h))
-s=6
+a4=o.pop()
+h=A.a5(a4)
+if(n.c!=null){a3={}
+g=J.dC(h)
+a2=a3.a=B.c.b1(A.d5(g,"Exception:",""))
+if(B.c.n(a2,"<html")||B.c.n(a2,"<!DOCTYPE"))a3.a="\u0421\u0435\u0440\u0432\u0435\u0440 \u0418\u043d\u0444\u0438\u043d\u0438\u0442\u0438 \u043e\u0442\u043a\u043b\u043e\u043d\u0438\u043b \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044e. \u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u043f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0432\u0432\u0435\u0434\u0435\u043d\u043d\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445 \u0438\u043b\u0438 \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u0435 \u043a\u0430\u043f\u0447\u0443."
+n.O(new A.az7(a3,n))}s=6
 break
 case 3:s=2
 break
@@ -99540,10 +99543,9 @@ s.ay=J.aC(this.b,"newCaptcha")
 s.id.mQ(0,B.D8)},
 $S:0}
 A.az7.prototype={
-$0(){var s,r=this.a
-r.z=!1
-s=J.dC(this.b)
-r.ch=B.c.b1(A.d5(s,"Exception:",""))},
+$0(){var s=this.b
+s.z=!1
+s.ch=this.a.a},
 $S:0}
 A.ayT.prototype={
 $1(a){return A.Ll(A.b([A.mL(B.hz,new A.ayR(a),null),A.mL(B.a3T,new A.ayS(a),null)],t.p),B.a4f,B.a3S)},
