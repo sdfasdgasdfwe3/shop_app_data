@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'data_manager.dart';
 import 'main.dart';
 import 'models.dart';
+import 'screens/profile_screen.dart';
 import 'screens/tabs/articles_tab.dart';
 import 'screens/tabs/cart_tab.dart';
 import 'screens/tabs/catalog_tab.dart';
@@ -475,7 +476,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Icon(
+              _isLoggedIn ? Icons.account_circle : Icons.account_circle_outlined,
+              color: _isLoggedIn ? Theme.of(context).colorScheme.primary : null,
+            ),
+            tooltip: 'Профиль / Регистрация',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+              _checkSavedLogin();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Настройки',
             onPressed: _openSettings,
           ),
           ValueListenableBuilder<ThemeMode>(
