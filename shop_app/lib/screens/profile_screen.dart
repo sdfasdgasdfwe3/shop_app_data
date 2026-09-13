@@ -255,7 +255,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _onSponsorChanged(String value) {
     _sponsorDebounce?.cancel();
     final trimmed = value.trim();
-    if (trimmed.isEmpty) {
+    final cleaned = trimmed.replaceFirst(RegExp(r'^(?:id|ид|номер)[\s:#№-]*', caseSensitive: false), '').trim();
+
+    if (cleaned.isEmpty || cleaned.length < 3) {
       setState(() {
         _isCheckingSponsor = false;
         _sponsorFio = null;
@@ -270,11 +272,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _sponsorError = null;
     });
 
-    _sponsorDebounce = Timer(const Duration(milliseconds: 500), () async {
+    _sponsorDebounce = Timer(const Duration(milliseconds: 600), () async {
       try {
         final sessParam = _sessionId != null ? '&sessionId=$_sessionId' : '';
         final response = await http
-            .get(Uri.parse('$apiBaseUrl/api/sponsor?sid=${Uri.encodeComponent(trimmed)}$sessParam'))
+            .get(Uri.parse('$apiBaseUrl/api/sponsor?sid=${Uri.encodeComponent(cleaned)}$sessParam'))
             .timeout(const Duration(seconds: 10));
         if (!mounted) return;
 
