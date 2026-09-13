@@ -873,7 +873,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileCard() {
-    final email = _savedUser!['email'] ?? '';
     final partnerFio = (_savedUser!['partnerFio'] ?? _savedUser!['fio'] ?? '').toString().trim();
     final partnerName = (_savedUser!['partnerName'] ?? '').toString().trim();
     final combinedFio = '${_savedUser!['lastName'] ?? ''} ${_savedUser!['firstName'] ?? ''} ${_savedUser!['patronymic'] ?? ''}'.trim();
@@ -892,11 +891,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       displayFio = 'Партнер Инфинити';
     }
 
-    final phone = _savedUser!['phone'] ?? '';
-    final city = _savedUser!['city'] ?? '';
-    final password = _savedUser!['password'] ?? '';
-    final sponsorFio = (_savedUser!['sponsorFio'] ?? '').toString().trim();
-    final sponsorId = (_savedUser!['sponsor'] ?? '').toString().trim();
     final referralLink = (_savedUser!['referralLink'] ?? '').toString().trim();
     final partnersGuid = (_savedUser!['partnersGuid'] ?? '').toString().trim();
     final effectiveRefLink = referralLink.isNotEmpty
@@ -904,7 +898,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         : (partnersGuid.isNotEmpty
             ? 'https://infinity-mlm.com/user/registration?ref=$partnersGuid&warehouse=1'
             : '');
-    final warehouse = (_savedUser!['warehouse'] ?? '★ Главный').toString().trim();
     final stats = _savedUser!['stats'] is Map ? Map<String, dynamic>.from(_savedUser!['stats']) : null;
     final partnersCount = stats?['partnersCount'] ?? '0';
     final partnersCountIncrease = stats?['partnersCountIncrease'] ?? '0%';
@@ -925,7 +918,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Header with Avatar, Name, Email, Warehouse, Refresh
+            // 1. Header with Avatar, Name, Refresh
             Row(
               children: [
                 CircleAvatar(
@@ -935,79 +928,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ФИО и ID номер
-                      Text(
-                        partnerId.isNotEmpty && !displayFio.contains(partnerId)
-                            ? '$displayFio (ID: $partnerId)'
-                            : displayFio,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          if (partnerId.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'ID: $partnerId',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Партнер НПК ИНФИНИТИ',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.blue),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              warehouse,
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: Text(
+                    displayFio,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.blue),
-                  tooltip: 'Изменить личные данные',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => EditProfileScreen(
-                          user: _savedUser!,
-                          apiBaseUrl: apiBaseUrl,
-                          onProfileUpdated: () {
-                            _loadSavedUser();
-                            _refreshCabinetStats();
-                          },
-                        ),
-                      ),
-                    );
-                  },
                 ),
                 IconButton(
                   icon: _isRefreshingCabinet
@@ -1254,65 +1178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const Divider(height: 28),
 
-            // 5. Personal account info
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.person_outline, size: 16, color: Colors.black87),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Данные профиля',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                TextButton.icon(
-                  icon: const Icon(Icons.edit, size: 14),
-                  label: const Text('Изменить', style: TextStyle(fontSize: 12)),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => EditProfileScreen(
-                          user: _savedUser!,
-                          apiBaseUrl: apiBaseUrl,
-                          onProfileUpdated: () {
-                            _loadSavedUser();
-                            _refreshCabinetStats();
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _buildInfoRow('ФИО', displayFio),
-            if (partnerId.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _buildInfoRow('ID партнера', partnerId, isCopyable: true),
-            ],
-            const SizedBox(height: 10),
-            _buildInfoRow('Телефон', phone.isNotEmpty ? '+7 $phone' : '—'),
-            const SizedBox(height: 10),
-            _buildInfoRow('Город', city.isNotEmpty ? city : '—'),
-            const SizedBox(height: 10),
-            _buildInfoRow('Склад', warehouse),
-            const SizedBox(height: 10),
-            _buildInfoRow('E-mail (логин)', email, isCopyable: true),
-            const SizedBox(height: 10),
-            _buildInfoRow('Пароль', password, isCopyable: true),
-            if (sponsorFio.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _buildInfoRow('Спонсор', sponsorFio),
-            ] else if (sponsorId.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _buildInfoRow('ID спонсора', sponsorId),
-            ],
-            const Divider(height: 28),
+
 
             // 6. Native MLM Cabinet Sections
             Row(
@@ -1562,33 +1428,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value, {bool isCopyable = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            if (isCopyable) ...[
-              const SizedBox(width: 6),
-              InkWell(
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: value));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('$label скопирован'), duration: const Duration(seconds: 1)),
-                  );
-                },
-                child: Icon(Icons.copy, size: 16, color: Colors.blue.shade700),
-              ),
-            ],
-          ],
-        ),
-      ],
     );
   }
 
