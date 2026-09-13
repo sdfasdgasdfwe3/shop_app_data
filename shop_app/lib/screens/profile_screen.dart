@@ -272,8 +272,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     _sponsorDebounce = Timer(const Duration(milliseconds: 500), () async {
       try {
+        final sessParam = _sessionId != null ? '&sessionId=$_sessionId' : '';
         final response = await http
-            .get(Uri.parse('$apiBaseUrl/api/sponsor?sid=${Uri.encodeComponent(trimmed)}'))
+            .get(Uri.parse('$apiBaseUrl/api/sponsor?sid=${Uri.encodeComponent(trimmed)}$sessParam'))
             .timeout(const Duration(seconds: 10));
         if (!mounted) return;
 
@@ -366,6 +367,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final email = (data['email'] ?? _activeEmail ?? '').toString().trim();
         final password = _passwordController.text.trim();
 
+        final sponsorVal = (data['sponsor'] ?? _sponsorController.text.trim()).toString().trim();
+        final sponsorFioVal = (data['sponsorFio'] ?? _sponsorFio ?? '').toString().trim();
+
         final userData = {
           'email': email,
           'password': password,
@@ -373,8 +377,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'firstName': _firstNameController.text.trim(),
           'city': _cityController.text.trim(),
           'phone': _phoneController.text.trim(),
-          'sponsor': _sponsorController.text.trim(),
-          'sponsorFio': _sponsorFio ?? '',
+          'sponsor': sponsorVal,
+          'sponsorFio': sponsorFioVal,
           'ticket': (data['ticket'] ?? '').toString().trim(),
           'partnerId': partnerId,
           'registeredAt': DateTime.now().toIso8601String(),
@@ -390,7 +394,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _isSubmitting = false;
           });
 
-          _showRegistrationSuccessDialog(partnerId, email, password);
+          _showRegistrationSuccessDialog(partnerId, email, password, sponsorFioVal);
           widget.onLoginStateChanged?.call();
         }
       } else {
@@ -505,7 +509,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showRegistrationSuccessDialog(String partnerId, String email, String password) {
+  void _showRegistrationSuccessDialog(String partnerId, String email, String password, [String? sponsorFio]) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -532,6 +536,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 16),
+            if (sponsorFio != null && sponsorFio.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.group, color: Colors.green, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Ваш спонсор: $sponsorFio',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (partnerId.isNotEmpty) ...[
               Container(
                 width: double.infinity,
