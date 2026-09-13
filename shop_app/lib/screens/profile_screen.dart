@@ -910,11 +910,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final rawQualification = (_savedUser!['qualification'] ?? _savedUser!['directorsStatus'] ?? _savedUser!['partnersStatus'] ?? '').toString().trim();
     final qualification = rawQualification.isNotEmpty ? rawQualification : 'Партнер';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.15)),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -985,9 +990,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.08),
+                  color: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.withValues(alpha: 0.25)),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                        : const Color(0xFFBFDBFE),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -999,24 +1010,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           'Ваш ID партнера',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade700,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           partnerId,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
                             letterSpacing: 1.2,
                           ),
                         ),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.copy, color: Colors.blue),
+                      icon: Icon(
+                        Icons.copy,
+                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                      ),
                       tooltip: 'Скопировать ID партнера',
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: partnerId));
@@ -1040,44 +1054,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.deepPurple.shade50,
-                      Colors.purple.shade50,
-                    ],
-                  ),
+                  color: isDark
+                      ? const Color(0xFF581C87).withValues(alpha: 0.15)
+                      : const Color(0xFFFAF5FF),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.purple.withValues(alpha: 0.25)),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xFFA855F7).withValues(alpha: 0.3)
+                        : const Color(0xFFE9D5FF),
+                    width: 1,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.group_add, color: Colors.purple, size: 18),
+                        Icon(
+                          Icons.group_add,
+                          color: isDark ? const Color(0xFFC084FC) : Colors.purple,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Ссылки для новых участников',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.purple),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? const Color(0xFFC084FC) : Colors.purple,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Реферальная ссылка на регистрацию:',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF18181B) : Colors.white,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0),
+                        ),
                       ),
                       child: Text(
                         effectiveRefLink,
-                        style: const TextStyle(fontSize: 11, color: Colors.black87),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? const Color(0xFFE4E4E7) : const Color(0xFF1E293B),
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1090,9 +1122,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             icon: const Icon(Icons.copy, size: 14),
                             label: const Text('Скопировать', style: TextStyle(fontSize: 12)),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.purple,
+                              foregroundColor: isDark ? const Color(0xFFC084FC) : Colors.purple,
                               padding: const EdgeInsets.symmetric(vertical: 6),
-                              side: const BorderSide(color: Colors.purple),
+                              side: BorderSide(
+                                color: isDark ? const Color(0xFFA855F7) : Colors.purple,
+                              ),
                             ),
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: effectiveRefLink));
@@ -1108,7 +1142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             icon: const Icon(Icons.share, size: 14),
                             label: const Text('Поделиться', style: TextStyle(fontSize: 12)),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple,
+                              backgroundColor: isDark ? const Color(0xFF7E22CE) : Colors.purple,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 6),
                             ),
@@ -1301,12 +1335,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String subtitle,
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final content = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
+        color: color.withValues(alpha: isDark ? 0.12 : 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.35 : 0.2),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1335,14 +1373,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: color.withValues(alpha: 0.9),
+                color: isDark ? Colors.white : color.withValues(alpha: 0.9),
               ),
             ),
           ),
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+            style: TextStyle(
+              fontSize: 10,
+              color: isDark ? const Color(0xFFA1A1AA) : Colors.grey.shade600,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -1365,6 +1406,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String? subtitle,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1373,17 +1415,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.15)),
+          border: Border.all(
+            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
+                color: isDark
+                    ? const Color(0xFF1E293B)
+                    : Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, size: 20, color: Colors.blue.shade700),
+              child: Icon(
+                icon,
+                size: 20,
+                color: isDark ? const Color(0xFF60A5FA) : Colors.blue.shade700,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1398,13 +1449,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? const Color(0xFFA1A1AA) : Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 12,
+              color: isDark ? const Color(0xFF71717A) : Colors.grey.shade400,
+            ),
           ],
         ),
       ),

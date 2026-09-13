@@ -1024,12 +1024,14 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
 
         // Tabs
         Container(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           child: TabBar(
             controller: _tabController,
-            labelColor: const Color(0xFF1E3A8A),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: const Color(0xFF1E3A8A),
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF71717A)
+                : const Color(0xFF94A3B8),
+            indicatorColor: Theme.of(context).colorScheme.primary,
             indicatorWeight: 3,
             tabs: const [
               Tab(icon: Icon(Icons.person_add_alt_1_rounded), text: 'Авто-регистрация'),
@@ -1260,20 +1262,35 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF27272A)
+                      : const Color(0xFFE2E8F0),
+                ),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.assignment_outlined, size: 48, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 48,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF71717A)
+                        : Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 10),
                   const Text('Список пуст', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Создайте заявку в форме выше. После авто-регистрации карточка с ID, ФИО и паролем появится здесь.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFFA1A1AA)
+                          : Colors.black54,
+                    ),
                   ),
                 ],
               ),
@@ -1647,7 +1664,13 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
           const SizedBox(height: 12),
           Text(
             'Найдено кандидатов: ${filtered.length} (из $_totalDownlineCount в структуре)',
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black54),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFFA1A1AA)
+                  : const Color(0xFF64748B),
+            ),
           ),
           const SizedBox(height: 8),
 
@@ -1655,20 +1678,29 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF27272A)
+                      : const Color(0xFFE2E8F0),
+                ),
               ),
-              child: const Column(
+              child: Column(
                 children: [
-                  Icon(Icons.check_circle_outline, size: 48, color: Colors.green),
-                  SizedBox(height: 8),
-                  Text('Кандидатов не найдено', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  SizedBox(height: 4),
+                  const Icon(Icons.check_circle_outline, size: 48, color: Colors.green),
+                  const SizedBox(height: 8),
+                  const Text('Кандидатов не найдено', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 4),
                   Text(
                     'По указанным фильтрам партнеров под угрозой терминации в следующем месяце не обнаружено.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFFA1A1AA)
+                          : Colors.black54,
+                    ),
                   ),
                 ],
               ),
@@ -1978,11 +2010,11 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
 
           // Tabs
           Container(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             child: TabBar(
               controller: _adminTabController,
-              labelColor: const Color(0xFF1E3A8A),
-              indicatorColor: const Color(0xFF1E3A8A),
+              labelColor: Theme.of(context).colorScheme.primary,
+              indicatorColor: Theme.of(context).colorScheme.primary,
               tabs: [
                 Tab(text: 'Заявки (${_requests.length})'),
                 Tab(text: 'Разрешенные ID (${_allowedIds.length})'),
@@ -2211,14 +2243,23 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF27272A)
+                    : const Color(0xFFE2E8F0),
+              ),
             ),
-            child: const Text(
+            child: Text(
               'Список пуст. Доступ к VIP-разделу сейчас закрыт для всех партнеров.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFFA1A1AA)
+                    : const Color(0xFF64748B),
+                fontSize: 13,
+              ),
             ),
           )
         else

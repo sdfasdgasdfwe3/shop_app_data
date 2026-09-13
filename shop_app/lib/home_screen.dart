@@ -508,21 +508,29 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true,
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
+          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 14),
           child: Container(
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF27272A)
+                    : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 14,
+                  color: Colors.black.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.06,
+                  ),
+                  blurRadius: 18,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(28),
               child: BottomNavigationBar(
                 currentIndex: _selectedIndex,
                 onTap: (index) {
@@ -531,8 +539,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   });
                 },
                 backgroundColor: Theme.of(context).cardColor,
-                selectedItemColor: Colors.blue.shade700,
-                unselectedItemColor: Colors.grey.shade500,
+                selectedItemColor: Theme.of(context).colorScheme.primary,
+                unselectedItemColor: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF71717A)
+                    : const Color(0xFF94A3B8),
                 showSelectedLabels: true,
                 showUnselectedLabels: false,
                 elevation: 0,
@@ -576,6 +586,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: Padding(
                       padding: const EdgeInsets.only(bottom: 4, top: 8),
                       child: Badge(
+                        backgroundColor: const Color(0xFFEF4444),
+                        textColor: Colors.white,
                         isLabelVisible: totalCartItems > 0,
                         label: Text('$totalCartItems'),
                         child: const Icon(Icons.shopping_cart_outlined),
@@ -584,6 +596,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     activeIcon: Padding(
                       padding: const EdgeInsets.only(bottom: 4, top: 8),
                       child: Badge(
+                        backgroundColor: const Color(0xFFEF4444),
+                        textColor: Colors.white,
                         isLabelVisible: totalCartItems > 0,
                         label: Text('$totalCartItems'),
                         child: const Icon(Icons.shopping_cart),

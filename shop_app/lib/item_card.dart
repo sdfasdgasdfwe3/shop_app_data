@@ -29,21 +29,23 @@ class ItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0),
             width: 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -52,7 +54,7 @@ class ItemCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+                top: Radius.circular(15),
               ),
               child: imageUrl.isNotEmpty
                   ? CachedNetworkImage(
@@ -62,11 +64,13 @@ class ItemCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       placeholder: (context, url) => const SizedBox(
                         height: 160,
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
                       errorWidget: (context, url, error) => const SizedBox(
                         height: 160,
-                        child: Icon(Icons.broken_image, size: 50),
+                        child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
                       ),
                     )
                   : SizedBox(
@@ -74,14 +78,14 @@ class ItemCard extends StatelessWidget {
                       width: double.infinity,
                       child: Icon(
                         placeholderIcon,
-                        size: 50,
+                        size: 48,
                         color: Colors.grey,
                       ),
                     ),
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(10.0),
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -92,14 +96,14 @@ class ItemCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          height: 1.2,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
                         ),
                       ),
                     ),
                     if (priceText != null || pointsText != null) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.center,
@@ -108,19 +112,28 @@ class ItemCard extends StatelessWidget {
                             if (priceText != null)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 10,
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
+                                  color: isDark
+                                      ? const Color(0xFF1E293B)
+                                      : const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                                        : const Color(0xFFBFDBFE),
+                                  ),
                                 ),
                                 child: Text(
                                   priceText!,
-                                  style: const TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? const Color(0xFF60A5FA)
+                                        : const Color(0xFF2563EB),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12.5,
                                   ),
                                 ),
                               ),
@@ -129,19 +142,28 @@ class ItemCard extends StatelessWidget {
                             if (pointsText != null)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                  horizontal: 10,
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
+                                  color: isDark
+                                      ? const Color(0xFF451A03).withValues(alpha: 0.3)
+                                      : const Color(0xFFFFFBEB),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+                                        : const Color(0xFFFDE68A),
+                                  ),
                                 ),
                                 child: Text(
                                   pointsText!,
                                   style: TextStyle(
-                                    color: Colors.orange.shade800,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                    color: isDark
+                                        ? const Color(0xFFFBBF24)
+                                        : const Color(0xFFD97706),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12.5,
                                   ),
                                 ),
                               ),
@@ -161,18 +183,25 @@ class ItemCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(context).textTheme.bodySmall?.color,
-                          height: 1.3,
+                          height: 1.35,
                         ),
                       ),
                     ),
                     if (cartQuantity != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       cartQuantity! > 0
                           ? Container(
-                              height: 36,
+                              height: 38,
                               decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(18),
+                                color: isDark
+                                    ? const Color(0xFF27272A)
+                                    : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF3F3F46)
+                                      : const Color(0xFFE2E8F0),
+                                ),
                               ),
                               child: Row(
                                 mainAxisAlignment:
@@ -181,55 +210,62 @@ class ItemCard extends StatelessWidget {
                                   IconButton(
                                     icon: const Icon(
                                       Icons.remove,
-                                      size: 18,
-                                      color: Colors.blue,
+                                      size: 16,
                                     ),
                                     onPressed: onDecrement,
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(
-                                      minWidth: 36,
-                                      minHeight: 36,
+                                      minWidth: 38,
+                                      minHeight: 38,
                                     ),
                                   ),
                                   Text(
                                     '$cartQuantity',
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w700,
                                       fontSize: 14,
                                     ),
                                   ),
                                   IconButton(
                                     icon: const Icon(
                                       Icons.add,
-                                      size: 18,
-                                      color: Colors.blue,
+                                      size: 16,
                                     ),
                                     onPressed: onIncrement,
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(
-                                      minWidth: 36,
-                                      minHeight: 36,
+                                      minWidth: 38,
+                                      minHeight: 38,
                                     ),
                                   ),
                                 ],
                               ),
                             )
                           : SizedBox(
-                              height: 36,
+                              height: 38,
                               width: double.infinity,
-                              child: ElevatedButton(
+                              child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  foregroundColor: Colors.white,
+                                  backgroundColor: isDark
+                                      ? const Color(0xFFFAFAFA)
+                                      : const Color(0xFF0F172A),
+                                  foregroundColor: isDark
+                                      ? const Color(0xFF09090B)
+                                      : Colors.white,
+                                  elevation: 0,
                                   padding: EdgeInsets.zero,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
+                                icon: const Icon(Icons.add_shopping_cart, size: 16),
                                 onPressed: onIncrement,
-                                child: const Text(
+                                label: const Text(
                                   'В корзину',
-                                  style: TextStyle(fontSize: 13),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
