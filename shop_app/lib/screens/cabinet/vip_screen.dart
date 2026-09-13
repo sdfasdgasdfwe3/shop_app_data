@@ -2057,30 +2057,34 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
         final comment = (r['comment'] ?? '').toString();
 
         return Card(
-          elevation: 1,
+          elevation: 0,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('ID партнера: $id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E3A8A))),
+                    Text('ID партнера: $id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A))),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: Colors.amber.shade300),
                       ),
                       child: Text(
                         'ОЖИДАЕТ РЕШЕНИЯ',
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
                           color: Colors.amber.shade900,
                         ),
                       ),
@@ -2088,29 +2092,34 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
                   ],
                 ),
                 if (fio.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text('ФИО: $fio', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  Text('ФИО: $fio', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E293B))),
                 ],
                 if (phone.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text('Телефон: $phone', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                  Text('Телефон: $phone', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                 ],
                 if (comment.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
-                    child: Text(comment, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Text(comment, style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: const Color(0xFF10B981),
                           foregroundColor: Colors.white,
+                          elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
@@ -2122,7 +2131,8 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
                     const SizedBox(width: 8),
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
+                        foregroundColor: const Color(0xFFEF4444),
+                        side: const BorderSide(color: Color(0xFFFCA5A5)),
                         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
@@ -2145,24 +2155,27 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
       children: [
         // Add manual ID card
         Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Добавить ID партнера вручную', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 8),
+                const Text('Добавить ID партнера вручную', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A))),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _addIdController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Номер ID (например, 4)',
-                          border: OutlineInputBorder(),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                           isDense: true,
                         ),
                       ),
@@ -2172,6 +2185,9 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E3A8A),
                         foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       onPressed: () {
                         final val = _addIdController.text.trim();
@@ -2180,7 +2196,7 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
                           _addIdController.clear();
                         }
                       },
-                      child: const Text('Добавить'),
+                      child: const Text('Добавить', style: TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ),
@@ -2189,27 +2205,36 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
           ),
         ),
         const SizedBox(height: 16),
-        const Text('Активные разрешенные ID:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black54)),
+        const Text('Активные разрешенные ID:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF475569))),
         const SizedBox(height: 8),
         if (_allowedIds.isEmpty)
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
             child: const Text(
               'Список пуст. Доступ к VIP-разделу сейчас закрыт для всех партнеров.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54, fontSize: 13),
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
             ),
           )
         else
           ..._allowedIds.map((id) => Card(
+                elevation: 0,
                 margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
                 child: ListTile(
                   leading: const CircleAvatar(
                     backgroundColor: Color(0xFFFEF3C7),
                     child: Icon(Icons.verified, color: Colors.amber, size: 20),
                   ),
-                  title: Text('ID: $id', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text('ID: $id', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     tooltip: 'Отозвать доступ',
