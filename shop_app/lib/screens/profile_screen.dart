@@ -172,6 +172,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (data['stats'] != null) {
           updated['stats'] = data['stats'];
         }
+        if (data['qualification'] != null && (data['qualification'] as String).isNotEmpty) {
+          updated['qualification'] = data['qualification'];
+        }
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('saved_auth_user', jsonEncode(updated));
         setState(() {
@@ -906,6 +909,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final bonus = stats?['bonus'] ?? '0 ₽';
     final bonusIncrease = stats?['bonusIncrease'] ?? '0%';
     final stock = stats?['stock'] ?? '0 Бонус';
+    final rawQualification = (_savedUser!['qualification'] ?? _savedUser!['directorsStatus'] ?? _savedUser!['partnersStatus'] ?? '').toString().trim();
+    final qualification = rawQualification.isNotEmpty ? rawQualification : 'Партнер';
 
     return Card(
       elevation: 0,
@@ -918,7 +923,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Header with Avatar, Name, Refresh
+            // 1. Header with Avatar, Name, Qualification, Refresh
             Row(
               children: [
                 CircleAvatar(
@@ -928,9 +933,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Text(
-                    displayFio,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayFio,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.workspace_premium, size: 14, color: Colors.blue.shade700),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Квалификация: $qualification',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
