@@ -257,7 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final trimmed = value.trim();
     final cleaned = trimmed.replaceFirst(RegExp(r'^(?:id|ид|номер)[\s:#№-]*', caseSensitive: false), '').trim();
 
-    if (cleaned.isEmpty || cleaned.length < 3) {
+    if (cleaned.isEmpty) {
       setState(() {
         _isCheckingSponsor = false;
         _sponsorFio = null;
@@ -266,45 +266,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    // While typing, reset previous error and fio to avoid flashing "Данные не найдены"
+    setState(() {
+      _sponsorFio = null;
+      _sponsorError = null;
+    });
+
+    _sponsorDebounce = Timer(const Duration(milliseconds: 700), () {
+      _checkSponsor(cleaned);
+    });
+  }
+
+  Future<void> _checkSponsor(String query) async {
+    final cleaned = query.replaceFirst(RegExp(r'^(?:id|ид|номер)[\s:#№-]*', caseSensitive: false), '').trim();
+    if (cleaned.isEmpty) return;
+
     setState(() {
       _isCheckingSponsor = true;
       _sponsorFio = null;
       _sponsorError = null;
     });
 
-    _sponsorDebounce = Timer(const Duration(milliseconds: 600), () async {
-      try {
-        final sessParam = _sessionId != null ? '&sessionId=$_sessionId' : '';
-        final response = await http
-            .get(Uri.parse('$apiBaseUrl/api/sponsor?sid=${Uri.encodeComponent(cleaned)}$sessParam'))
-            .timeout(const Duration(seconds: 10));
-        if (!mounted) return;
+    try {
+      final sessParam = _sessionId != null ? '&sessionId=$_sessionId' : '';
+      final response = await http
+          .get(Uri.parse('$apiBaseUrl/api/sponsor?sid=${Uri.encodeComponent(cleaned)}$sessParam'))
+          .timeout(const Duration(seconds: 10));
+      if (!mounted) return;
 
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        if (data['success'] == true &&
-            data['sponsorFio'] != null &&
-            (data['sponsorFio'] as String).isNotEmpty) {
-          setState(() {
-            _isCheckingSponsor = false;
-            _sponsorFio = (data['sponsorFio'] as String).trim();
-            _sponsorError = null;
-          });
-        } else {
-          setState(() {
-            _isCheckingSponsor = false;
-            _sponsorFio = null;
-            _sponsorError = data['error'] ?? 'Данные не найдены';
-          });
-        }
-      } catch (e) {
-        if (!mounted) return;
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      if (data['success'] == true &&
+          data['sponsorFio'] != null &&
+          (data['sponsorFio'] as String).isNotEmpty) {
+        setState(() {
+          _isCheckingSponsor = false;
+          _sponsorFio = (data['sponsorFio'] as String).trim();
+          _sponsorError = null;
+        });
+      } else {
         setState(() {
           _isCheckingSponsor = false;
           _sponsorFio = null;
-          _sponsorError = 'Ошибка проверки спонсора';
+          _sponsorError = data['error'] ?? 'Данные не найдены';
         });
       }
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCheckingSponsor = false;
+        _sponsorFio = null;
+        _sponsorError = 'Ошибка проверки спонсора';
+      });
+    }
   }
 
   Future<void> _reloadCaptcha() async {
@@ -1265,9 +1278,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextFormField(
                 controller: _sponsorController,
                 onChanged: _onSponsorChanged,
+                onFieldSubmitted: (val) {
+                  _sponsorDebounce?.cancel();
+                  _checkSponsor(val);
+                },
                 decoration: InputDecoration(
                   labelText: 'ID / логин спонсора (необязательно)',
-                  hintText: 'Например, 23316',
+                  hintText: 'Например, 1, 17 или 23316',
                   prefixIcon: const Icon(Icons.group_outlined),
                   suffixIcon: _isCheckingSponsor
                       ? const Padding(
@@ -1279,12 +1296,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         )
                       : (_sponsorController.text.trim().isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _sponsorController.clear();
-                                _onSponsorChanged('');
-                              },
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_sponsorFio != null && _sponsorFio!.isNotEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 4),
+                                    child: Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                  )
+                                else
+                                  IconButton(
+                                    icon: const Icon(Icons.search, size: 20),
+                                    tooltip: 'Проверить спонсора',
+                                    onPressed: () {
+                                      _sponsorDebounce?.cancel();
+                                      _checkSponsor(_sponsorController.text);
+                                    },
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  tooltip: 'Очистить',
+                                  onPressed: () {
+                                    _sponsorController.clear();
+                                    _onSponsorChanged('');
+                                  },
+                                ),
+                              ],
                             )
                           : null),
                 ),
