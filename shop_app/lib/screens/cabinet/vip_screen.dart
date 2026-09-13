@@ -31,8 +31,8 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   // ===================== АВТО-РЕГИСТРАЦИЯ =====================
   bool _isLoadingRegistrations = false;
   List<Map<String, dynamic>> _registrations = [];
-  bool _isAutoRegistering = false;
-  String _registerStepText = '';
+  bool _isSubmitting = false;
+  Timer? _pollingTimer;
 
   // Form controllers
   final _sponsorController = TextEditingController();
@@ -123,6 +123,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
     _tabController.dispose();
     _sponsorController.dispose();
     _lastNameController.dispose();
@@ -240,25 +241,46 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
 
   // ===================== АВТО-РЕГИСТРАЦИЯ МЕТОДЫ =====================
 
-  Future<void> _loadRegistrations() async {
-    setState(() => _isLoadingRegistrations = true);
+  Future<void> _loadRegistrations({bool silent = false}) async {
+    if (!silent) setState(() => _isLoadingRegistrations = true);
     try {
       final uri = Uri.parse('${widget.apiBaseUrl}/api/vip/auto-registrations?partnerId=${Uri.encodeComponent(_cleanPartnerId)}');
       final res = await http.get(uri).timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
         if (data['success'] == true && data['registrations'] is List) {
-          setState(() {
-            _registrations = List<Map<String, dynamic>>.from(data['registrations']);
-            _isLoadingRegistrations = false;
-          });
-          return;
+          if (mounted) {
+            setState(() {
+              _registrations = List<Map<String, dynamic>>.from(data['registrations']);
+              if (!silent) _isLoadingRegistrations = false;
+            });
+            _checkAndStartPolling();
+            return;
+          }
         }
       }
     } catch (e) {
       debugPrint('[VIP] Error loading registrations: $e');
     }
-    setState(() => _isLoadingRegistrations = false);
+    if (!silent && mounted) setState(() => _isLoadingRegistrations = false);
+  }
+
+  void _checkAndStartPolling() {
+    final hasProcessing = _registrations.any((r) => r['status'] == 'processing');
+    if (hasProcessing) {
+      if (_pollingTimer == null || !_pollingTimer!.isActive) {
+        _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+          if (!mounted) {
+            timer.cancel();
+            return;
+          }
+          _loadRegistrations(silent: true);
+        });
+      }
+    } else {
+      _pollingTimer?.cancel();
+      _pollingTimer = null;
+    }
   }
 
   Future<void> _startAutoRegistration() async {
@@ -289,23 +311,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
       return;
     }
 
-    setState(() {
-      _isAutoRegistering = true;
-      _registerStepText = 'Инициализация фоновой регистрации...';
-    });
-
-    final stepTimer = Timer.periodic(const Duration(seconds: 4), (t) {
-      if (!mounted) return;
-      if (t.tick == 1) {
-        setState(() => _registerStepText = 'Создание сессии и получение PIN-кода...');
-      } else if (t.tick == 2) {
-        setState(() => _registerStepText = 'Автоматическая расшифровка капчи...');
-      } else if (t.tick == 3) {
-        setState(() => _registerStepText = 'Отправка регистрационных данных на сайт...');
-      } else if (t.tick >= 4) {
-        setState(() => _registerStepText = 'Завершение регистрации и создание аккаунта...');
-      }
-    });
+    setState(() => _isSubmitting = true);
 
     try {
       final payload = {
@@ -325,46 +331,55 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 120));
+          .timeout(const Duration(seconds: 15));
 
-      stepTimer.cancel();
       final data = jsonDecode(utf8.decode(response.bodyBytes));
 
       if (data['success'] == true) {
         final reg = Map<String, dynamic>.from(data['registration'] ?? {});
         setState(() {
-          _isAutoRegistering = false;
+          _isSubmitting = false;
+          _registrations.removeWhere((r) => r['id'] == reg['id']);
           _registrations.insert(0, reg);
+          // Immediately clear candidate inputs so user can type the next person without waiting!
           _lastNameController.clear();
           _firstNameController.clear();
           _patronymicController.clear();
           _phoneController.clear();
           _cityController.clear();
           _generateRandomPassword();
+          // Sponsor ID remains as-is so subsequent registrations can be under the same sponsor
         });
 
+        _checkAndStartPolling();
+
         if (mounted) {
-          _showRegistrationSuccessDialog(reg);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFF0F766E),
+              content: Text('Заявка для $lastName $firstName поставлена в очередь регистрации. Вводите следующего!'),
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       } else {
-        setState(() => _isAutoRegistering = false);
+        setState(() => _isSubmitting = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: Colors.red.shade700,
-              content: Text(data['error'] ?? 'Ошибка автоматической регистрации'),
+              content: Text(data['error'] ?? 'Ошибка отправки заявки'),
             ),
           );
         }
       }
     } catch (e) {
-      stepTimer.cancel();
-      setState(() => _isAutoRegistering = false);
+      setState(() => _isSubmitting = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade700,
-            content: Text('Сбой запроса авто-регистрации: $e'),
+            content: Text('Сбой отправки заявки: $e'),
           ),
         );
       }
@@ -1295,48 +1310,27 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                   ),
                   const SizedBox(height: 16),
 
-                  if (_isAutoRegistering)
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          const CircularProgressIndicator(),
-                          const SizedBox(height: 10),
-                          Text(
-                            _registerStepText,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A)),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Пожалуйста, подождите. Процесс занимает около 20–40 секунд.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 11, color: Colors.black54),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E3A8A),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        elevation: 2,
-                      ),
-                      icon: const Icon(Icons.rocket_launch_rounded, size: 20),
-                      label: const Text(
-                        'Запустить автоматическую регистрацию',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      onPressed: _startAutoRegistration,
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E3A8A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 2,
                     ),
+                    icon: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.rocket_launch_rounded, size: 20),
+                    label: Text(
+                      _isSubmitting ? 'Отправка заявки...' : 'Запустить автоматическую регистрацию',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    onPressed: _isSubmitting ? null : _startAutoRegistration,
+                  ),
                 ],
               ),
             ),
@@ -1394,6 +1388,9 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   }
 
   Widget _buildRegistrationCard(Map<String, dynamic> reg) {
+    final status = (reg['status'] ?? '').toString();
+    final isProcessing = status == 'processing';
+    final isFailed = status == 'failed';
     final id = (reg['partnerId'] ?? '').toString();
     final fio = (reg['fio'] ?? '').toString();
     final password = (reg['password'] ?? '').toString();
@@ -1402,11 +1399,22 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     final city = (reg['city'] ?? '').toString();
     final expiresAt = reg['expiresAt'];
     final recId = (reg['id'] ?? '').toString();
+    final progress = (reg['progress'] ?? '').toString();
+    final error = (reg['error'] ?? '').toString();
+
+    // Card border color based on status
+    Color borderColor = Colors.grey.shade200;
+    if (isProcessing) borderColor = Colors.blue.shade300;
+    if (isFailed) borderColor = Colors.red.shade300;
+    if (!isProcessing && !isFailed) borderColor = Colors.green.shade300;
 
     return Card(
-      elevation: 1,
+      elevation: isProcessing ? 2 : 1,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: borderColor, width: isProcessing ? 1.5 : 1),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -1415,48 +1423,98 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
+                if (isProcessing)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 13,
+                          height: 13,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E3A8A)),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Регистрация на сервере...',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A)),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (isFailed)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, size: 14, color: Colors.red),
+                        SizedBox(width: 5),
+                        Text('Ошибка регистрации', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red)),
+                      ],
+                    ),
+                  )
+                else
+                  InkWell(
+                    onTap: () => _showRegistrationSuccessDialog(reg),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade300),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle, size: 14, color: Colors.green),
-                      const SizedBox(width: 4),
-                      Text('ID: $id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green)),
-                      const SizedBox(width: 6),
-                      InkWell(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: id));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('ID скопирован')),
-                          );
-                        },
-                        child: const Icon(Icons.copy, size: 14, color: Colors.green),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.amber.shade200),
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade300),
                       ),
-                      child: Text(
-                        '⏱ ${_formatTtl(expiresAt)}',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle, size: 14, color: Colors.green),
+                          const SizedBox(width: 4),
+                          Text('ID: $id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green)),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: id));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('ID скопирован')),
+                              );
+                            },
+                            child: const Icon(Icons.copy, size: 14, color: Colors.green),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 4),
+                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!isProcessing && !isFailed) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.amber.shade200),
+                        ),
+                        child: Text(
+                          '⏱ ${_formatTtl(expiresAt)}',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                      icon: const Icon(Icons.delete_outline, size: 18, color: Colors.grey),
                       tooltip: 'Удалить из списка',
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1469,41 +1527,86 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             const Divider(height: 16),
             Text(fio, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Expanded(
-                  child: Text('Пароль: $password', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
+
+            if (isProcessing) ...[
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                InkWell(
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: password));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Пароль скопирован')),
-                    );
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Icon(Icons.copy, size: 14, color: Colors.black54),
+                child: Row(
+                  children: [
+                    const Icon(Icons.sync_rounded, size: 15, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        progress.isNotEmpty ? progress : 'Идет автоматическая регистрация в НПК Инфинити...',
+                        style: TextStyle(fontSize: 12, color: Colors.blue.shade900, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            if (isFailed && error.isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  error,
+                  style: TextStyle(fontSize: 12, color: Colors.red.shade800, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+
+            if (!isProcessing && !isFailed) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Пароль: $password', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: password));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Пароль скопирован')),
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Icon(Icons.copy, size: 14, color: Colors.black54),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+            ],
+
             Text('Спонсор: ID $sponsor', style: const TextStyle(fontSize: 12, color: Colors.black54)),
             if (phone.isNotEmpty || city.isNotEmpty)
               Text('$city ${phone.isNotEmpty ? '• $phone' : ''}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F766E),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+
+            if (!isProcessing && !isFailed) ...[
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F766E),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.share_rounded, size: 16),
+                label: const Text('Скопировать данные для партнера', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                onPressed: () => _copyPartnerShareText(reg),
               ),
-              icon: const Icon(Icons.share_rounded, size: 16),
-              label: const Text('Скопировать данные для партнера', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-              onPressed: () => _copyPartnerShareText(reg),
-            ),
+            ],
           ],
         ),
       ),
