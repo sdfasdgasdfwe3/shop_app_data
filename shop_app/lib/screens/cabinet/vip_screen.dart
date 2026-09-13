@@ -54,6 +54,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   List<Map<String, dynamic>> _terminatingPartners = [];
   String _terminationsSearch = '';
   bool _onlyFirstLevel = false;
+  bool _isAdminUnlocked = false;
 
   // ===================== КАЛЬКУЛЯТОР =====================
   double _calcLo = 1500;
@@ -619,6 +620,85 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     }
   }
 
+
+  // ===================== ПАНЕЛЬ АДМИНИСТРАТОРА =====================
+
+  Future<void> _openAdminPanel() async {
+    if (!_isAdminUnlocked) {
+      final pinController = TextEditingController(text: '7777');
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.admin_panel_settings_rounded, color: Colors.amber, size: 26),
+              SizedBox(width: 10),
+              Text('Вход администратора', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Введите PIN-код администратора для просмотра заявок и управления доступом:', style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pinController,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'PIN-код администратора',
+                  hintText: '7777',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('По умолчанию: 7777', style: TextStyle(fontSize: 11, color: Colors.grey)),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+            ElevatedButton(
+              onPressed: () {
+                if (pinController.text.trim() == '7777' || pinController.text.trim() == 'admin') {
+                  Navigator.pop(ctx, true);
+                } else {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(backgroundColor: Colors.red, content: Text('Неверный PIN-код')),
+                  );
+                }
+              },
+              child: const Text('Войти'),
+            ),
+          ],
+        ),
+      );
+
+      if (ok != true) return;
+      _isAdminUnlocked = true;
+    }
+
+    if (!mounted) return;
+    _showAdminManagementModal();
+  }
+
+  void _showAdminManagementModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _AdminPanelModal(
+        apiBaseUrl: widget.apiBaseUrl,
+        currentUserId: _cleanPartnerId,
+        onAccessChanged: () {
+          _checkVipStatus();
+        },
+      ),
+    );
+  }
+
   void _callPhone(String rawPhone) async {
     final clean = rawPhone.replaceAll(RegExp(r'[^\d+]'), '');
     if (clean.isEmpty) {
@@ -642,6 +722,13 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
       appBar: AppBar(
         title: const Text('VIP - функции', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shield_rounded, color: Colors.amber),
+            tooltip: 'Заявки и управление доступом',
+            onPressed: _openAdminPanel,
+          ),
+        ],
       ),
       body: _buildContent(),
     );
@@ -1786,7 +1873,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                 const Text('Целевая квалификация:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedRank,
+                  value: _selectedRank,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     isDense: true,
@@ -1866,6 +1953,418 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+
+class _AdminPanelModal extends StatefulWidget {
+  final String apiBaseUrl;
+  final String currentUserId;
+  final VoidCallback onAccessChanged;
+
+  const _AdminPanelModal({
+    required this.apiBaseUrl,
+    required this.currentUserId,
+    required this.onAccessChanged,
+  });
+
+  @override
+  State<_AdminPanelModal> createState() => _AdminPanelModalState();
+}
+
+class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerProviderStateMixin {
+  late TabController _adminTabController;
+  bool _isLoading = true;
+  List<dynamic> _requests = [];
+  List<dynamic> _allowedIds = [];
+  final _addIdController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _adminTabController = TabController(length: 2, vsync: this);
+    _loadAdminData();
+  }
+
+  @override
+  void dispose() {
+    _adminTabController.dispose();
+    _addIdController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAdminData() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await http.get(Uri.parse('${widget.apiBaseUrl}/api/vip/requests')).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        setState(() {
+          _requests = data['requests'] ?? [];
+          _allowedIds = data['allowedIds'] ?? [];
+          _isLoading = false;
+        });
+        return;
+      }
+    } catch (_) {}
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _allowId(String partnerId) async {
+    final clean = partnerId.toLowerCase().replaceAll(RegExp(r'^(?:id|ид)[\s:#№-]*', caseSensitive: false), '').trim();
+    if (clean.isEmpty) return;
+    try {
+      final res = await http.post(
+        Uri.parse('${widget.apiBaseUrl}/api/vip/allow'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'partnerId': clean, 'allow': true}),
+      );
+      final data = jsonDecode(utf8.decode(res.bodyBytes));
+      if (!mounted) return;
+      if (data['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(backgroundColor: Colors.green, content: Text('Доступ для ID $clean успешно предоставлен!')),
+        );
+        _loadAdminData();
+        widget.onAccessChanged();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _revokeId(String partnerId) async {
+    final clean = partnerId.toLowerCase().replaceAll(RegExp(r'^(?:id|ид)[\s:#№-]*', caseSensitive: false), '').trim();
+    if (clean.isEmpty) return;
+    try {
+      final res = await http.post(
+        Uri.parse('${widget.apiBaseUrl}/api/vip/allow'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'partnerId': clean, 'allow': false}),
+      );
+      final data = jsonDecode(utf8.decode(res.bodyBytes));
+      if (!mounted) return;
+      if (data['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Доступ для ID $clean отозван')),
+        );
+        _loadAdminData();
+        widget.onAccessChanged();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _rejectRequest(String requestId, String partnerId) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${widget.apiBaseUrl}/api/vip/reject'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'requestId': requestId, 'partnerId': partnerId}),
+      );
+      final data = jsonDecode(utf8.decode(res.bodyBytes));
+      if (!mounted) return;
+      if (data['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Заявка отклонена')),
+        );
+        _loadAdminData();
+        widget.onAccessChanged();
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F172A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.shield_rounded, color: Colors.amber, size: 24),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Панель администратора', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('Управление VIP-доступом и заявками', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
+                  onPressed: _loadAdminData,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+
+          // Tabs
+          Container(
+            color: Colors.white,
+            child: TabBar(
+              controller: _adminTabController,
+              labelColor: const Color(0xFF1E3A8A),
+              indicatorColor: const Color(0xFF1E3A8A),
+              tabs: [
+                Tab(text: 'Заявки (${_requests.length})'),
+                Tab(text: 'Разрешенные ID (${_allowedIds.length})'),
+              ],
+            ),
+          ),
+
+          // Tab views
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : TabBarView(
+                    controller: _adminTabController,
+                    children: [
+                      _buildRequestsList(),
+                      _buildAllowedList(),
+                    ],
+                  ),
+          ),
+
+          // Web link footer
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.grey.shade100,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Веб-панель:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                TextButton.icon(
+                  icon: const Icon(Icons.open_in_new, size: 14),
+                  label: const Text('https://znam.space/vip-admin', style: TextStyle(fontSize: 12)),
+                  onPressed: () {
+                    launchUrl(Uri.parse('https://znam.space/vip-admin'), mode: LaunchMode.externalApplication);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequestsList() {
+    if (_requests.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.inbox_outlined, size: 48, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('Нет входящих заявок', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text('Когда партнер отправит запрос, он появится здесь.', style: TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final sorted = _requests.reversed.toList();
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(14),
+      itemCount: sorted.length,
+      itemBuilder: (ctx, i) {
+        final r = sorted[i];
+        final id = (r['partnerId'] ?? '').toString();
+        final fio = (r['fio'] ?? '').toString();
+        final phone = (r['phone'] ?? '').toString();
+        final comment = (r['comment'] ?? '').toString();
+        final status = (r['status'] ?? 'pending').toString();
+        final isApproved = status == 'approved' || _allowedIds.contains(id);
+
+        return Card(
+          elevation: 1,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('ID партнера: $id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E3A8A))),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isApproved ? Colors.green.shade50 : (status == 'rejected' ? Colors.red.shade50 : Colors.amber.shade50),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isApproved ? Colors.green.shade300 : (status == 'rejected' ? Colors.red.shade300 : Colors.amber.shade300),
+                        ),
+                      ),
+                      child: Text(
+                        isApproved ? 'ОДОБРЕНО' : (status == 'rejected' ? 'ОТКЛОНЕНО' : 'ОЖИДАЕТ'),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isApproved ? Colors.green.shade800 : (status == 'rejected' ? Colors.red.shade800 : Colors.amber.shade900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (fio.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('ФИО: $fio', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                ],
+                if (phone.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text('Телефон: $phone', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                ],
+                if (comment.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
+                    child: Text(comment, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    if (!isApproved) ...[
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          icon: const Icon(Icons.check, size: 16),
+                          label: const Text('Одобрить доступ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          onPressed: () => _allowId(id),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                        onPressed: () => _rejectRequest((r['id'] ?? '').toString(), id),
+                        child: const Text('Отклонить', style: TextStyle(fontSize: 12)),
+                      ),
+                    ] else ...[
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                        icon: const Icon(Icons.block, size: 16),
+                        label: const Text('Отозвать доступ', style: TextStyle(fontSize: 12)),
+                        onPressed: () => _revokeId(id),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAllowedList() {
+    return ListView(
+      padding: const EdgeInsets.all(14),
+      children: [
+        // Add manual ID card
+        Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Добавить ID партнера вручную', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _addIdController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          hintText: 'Номер ID (например, 4)',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        final val = _addIdController.text.trim();
+                        if (val.isNotEmpty) {
+                          _allowId(val);
+                          _addIdController.clear();
+                        }
+                      },
+                      child: const Text('Добавить'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text('Активные разрешенные ID:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black54)),
+        const SizedBox(height: 8),
+        if (_allowedIds.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            child: const Text(
+              'Список пуст. Доступ к VIP-разделу сейчас закрыт для всех партнеров.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.black54, fontSize: 13),
+            ),
+          )
+        else
+          ..._allowedIds.map((id) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFEF3C7),
+                    child: Icon(Icons.verified, color: Colors.amber, size: 20),
+                  ),
+                  title: Text('ID: $id', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: 'Отозвать доступ',
+                    onPressed: () => _revokeId(id.toString()),
+                  ),
+                ),
+              )),
       ],
     );
   }
