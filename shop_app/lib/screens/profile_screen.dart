@@ -1580,18 +1580,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             : const Text('Войти в аккаунт', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Center(
-                      child: TextButton(
-                        onPressed: () async {
-                          final uri = Uri.parse('https://infinity-mlm.com/user/login?ReturnUrl=%2Fuser%2Fmyaccount');
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          }
-                        },
-                        child: const Text('Забыли пароль? Восстановить на сайте', style: TextStyle(fontSize: 12)),
-                      ),
-                    ),
                   ],
                 ),
               ),
