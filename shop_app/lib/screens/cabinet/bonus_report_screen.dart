@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 class BonusReportScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -73,18 +72,6 @@ class _BonusReportScreenState extends State<BonusReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мои вознаграждения', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.open_in_browser),
-            tooltip: 'Открыть на сайте',
-            onPressed: () async {
-              final uri = Uri.parse('https://infinity-mlm.com/user/reportbonus');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _fetchBonuses,

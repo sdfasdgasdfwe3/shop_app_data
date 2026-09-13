@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 class AccountsScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -76,18 +75,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мои счета', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.open_in_browser),
-            tooltip: 'Открыть на сайте',
-            onPressed: () async {
-              final uri = Uri.parse('https://infinity-mlm.com/user/accounts');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _fetchAccounts,

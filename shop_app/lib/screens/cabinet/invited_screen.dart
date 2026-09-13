@@ -86,16 +86,6 @@ class _InvitedScreenState extends State<InvitedScreen> {
             tooltip: 'Поделиться реферальной ссылкой',
             onPressed: _shareReferralLink,
           ),
-          IconButton(
-            icon: const Icon(Icons.open_in_browser),
-            tooltip: 'Открыть на сайте',
-            onPressed: () async {
-              final uri = Uri.parse('https://infinity-mlm.com/user/reportpartnerpersonalinvited');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
         ],
       ),
       body: RefreshIndicator(

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 class DownlineScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -95,18 +94,6 @@ class _DownlineScreenState extends State<DownlineScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Структура (${_allPartners.length})', style: const TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.open_in_browser),
-            tooltip: 'Открыть на сайте',
-            onPressed: () async {
-              final uri = Uri.parse('https://infinity-mlm.com/user/reportdownline');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _fetchDownline,

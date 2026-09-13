@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -328,18 +327,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Личные данные', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.open_in_browser),
-            tooltip: 'Открыть на сайте',
-            onPressed: () async {
-              final uri = Uri.parse('https://infinity-mlm.com/user/edit');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _fetchProfile,

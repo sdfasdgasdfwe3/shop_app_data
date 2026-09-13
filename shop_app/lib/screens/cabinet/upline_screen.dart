@@ -69,18 +69,6 @@ class _UplineScreenState extends State<UplineScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Вышестоящие спонсоры', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.open_in_browser),
-            tooltip: 'Открыть на сайте',
-            onPressed: () async {
-              final uri = Uri.parse('https://infinity-mlm.com/user/reportupline');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _fetchUpline,
