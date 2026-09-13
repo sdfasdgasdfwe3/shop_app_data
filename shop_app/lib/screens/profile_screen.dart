@@ -10,6 +10,7 @@ import 'cabinet/accounts_screen.dart';
 import 'cabinet/downline_screen.dart';
 import 'cabinet/sales_history_screen.dart';
 import 'cabinet/upline_screen.dart';
+import 'cabinet/vip_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool showAppBar;
@@ -1261,6 +1262,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (ctx) => SalesHistoryScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildCabinetQuickLink(
+              icon: Icons.workspace_premium_rounded,
+              title: 'VIP - функции',
+              subtitle: 'Калькулятор дохода, квалификации и VIP-инструменты',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => VipScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
                 ),
               ),
             ),
