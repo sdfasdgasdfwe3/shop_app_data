@@ -31,12 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isInitializingAuto = false;
   int _autoSecondsElapsed = 0;
   Timer? _autoTimer;
-  bool _isSendingPin = false;
-  bool _isVerifyingPin = false;
   bool _isSubmitting = false;
-
-  bool _pinSent = false;
-  String? _customEmailSentTo;
 
   String? _sessionId;
   String? _activeEmail;
@@ -44,8 +39,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _errorMessage;
 
   final _formKey = GlobalKey<FormState>();
-  final _customEmailController = TextEditingController();
-  final _pinController = TextEditingController();
 
   final _lastNameController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -57,6 +50,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _captchaController = TextEditingController();
 
   bool _obscurePassword = true;
+
+  // Вход в аккаунт
+  final _loginFormKey = GlobalKey<FormState>();
+  final _loginUsernameController = TextEditingController();
+  final _loginPasswordController = TextEditingController();
+  bool _loginObscurePassword = true;
+  bool _isLoggingIn = false;
+  String? _loginErrorMessage;
 
   // Поиск спонсора
   String? _sponsorFio;
@@ -72,8 +73,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
-    _customEmailController.dispose();
-    _pinController.dispose();
+    _loginUsernameController.dispose();
+    _loginPasswordController.dispose();
     _lastNameController.dispose();
     _firstNameController.dispose();
     _patronymicController.dispose();
@@ -160,102 +161,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // 1. Отправка PIN-кода на свой email
-  Future<void> _sendCustomEmailPin() async {
-    final email = _customEmailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      setState(() {
-        _errorMessage = 'Введите корректный адрес электронной почты';
-      });
-      return;
-    }
+  // Вход в аккаунт
+  Future<void> _submitLogin() async {
+    if (!_loginFormKey.currentState!.validate()) return;
+
+    final username = _loginUsernameController.text.trim();
+    final password = _loginPasswordController.text;
 
     setState(() {
-      _isSendingPin = true;
-      _errorMessage = null;
+      _isLoggingIn = true;
+      _loginErrorMessage = null;
     });
 
     try {
       final response = await http
           .post(
-            Uri.parse('$apiBaseUrl/api/session/start'),
+            Uri.parse('$apiBaseUrl/api/login'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email}),
+            body: jsonEncode({
+              'username': username,
+              'password': password,
+            }),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 40));
 
-      final data = jsonDecode(response.body);
-      if (data['success'] == true) {
-        setState(() {
-          _sessionId = data['sessionId'];
-          _activeEmail = email;
-          _customEmailSentTo = email;
-          _pinSent = true;
-          _isSendingPin = false;
-        });
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      if (data['success'] == true && data['user'] != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('saved_auth_user', jsonEncode(data['user']));
         if (mounted) {
+          setState(() {
+            _savedUser = Map<String, dynamic>.from(data['user']);
+            _isLoggingIn = false;
+          });
+          widget.onLoginStateChanged?.call();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Код подтверждения отправлен на $email'),
-              backgroundColor: Colors.blue.shade700,
+              content: Text('Вход выполнен! Добро пожаловать, ${_savedUser?['partnerName'] ?? _savedUser?['partnerId'] ?? username}'),
+              backgroundColor: Colors.green.shade700,
             ),
           );
         }
       } else {
-        throw Exception(data['error'] ?? 'Не удалось отправить код');
+        throw Exception(data['error'] ?? 'Неверный логин или пароль');
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isSendingPin = false;
-          _errorMessage = e.toString().replaceAll('Exception:', '').trim();
-        });
-      }
-    }
-  }
-
-  // 2. Подтверждение PIN-кода
-  Future<void> _verifyPinCode() async {
-    final pin = _pinController.text.trim();
-    if (pin.length != 6) {
-      setState(() {
-        _errorMessage = 'Введите 6-значный код из письма';
-      });
-      return;
-    }
-    if (_sessionId == null) return;
-
-    setState(() {
-      _isVerifyingPin = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$apiBaseUrl/api/session/verify-pin'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'sessionId': _sessionId,
-              'pin': pin,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      final data = jsonDecode(response.body);
-      if (data['success'] == true) {
-        setState(() {
-          _captchaBase64 = data['captcha'];
-          _isVerifyingPin = false;
-        });
-      } else {
-        throw Exception(data['error'] ?? 'Неверный код подтверждения');
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isVerifyingPin = false;
-          _errorMessage = e.toString().replaceAll('Exception:', '').trim();
+          _isLoggingIn = false;
+          _loginErrorMessage = e.toString().replaceAll('Exception:', '').trim();
         });
       }
     }
@@ -532,7 +486,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _savedUser = null;
         _sessionId = null;
-        _pinSent = false;
         _activeEmail = null;
         _captchaBase64 = null;
       });
@@ -547,10 +500,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _activeEmail = null;
       _captchaBase64 = null;
       _errorMessage = null;
-      _pinSent = false;
-      _customEmailSentTo = null;
-      _customEmailController.clear();
-      _pinController.clear();
       _captchaController.clear();
       _sponsorController.clear();
       _sponsorFio = null;
@@ -1459,150 +1408,151 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
             ],
 
-            // Вариант 1: Свой Email (рекомендуется)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Регистрация на ваш E-mail',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'На вашу почту мгновенно придет 6-значный код подтверждения.',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _customEmailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Ваш E-mail',
-                      hintText: 'example@mail.ru',
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (!_pinSent) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: FilledButton.icon(
-                        icon: _isSendingPin
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.send_rounded, size: 18),
-                        label: Text(_isSendingPin ? 'Отправка кода...' : 'Получить код активации'),
-                        onPressed: (_isSendingPin || _isInitializingAuto) ? null : _sendCustomEmailPin,
-                      ),
-                    ),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: Colors.green, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Код отправлен на $_customEmailSentTo',
-                              style: const TextStyle(fontSize: 12, color: Colors.green),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _pinController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      decoration: InputDecoration(
-                        labelText: '6-значный код из письма',
-                        prefixIcon: const Icon(Icons.pin),
-                        counterText: '',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: FilledButton(
-                        onPressed: _isVerifyingPin ? null : _verifyPinCode,
-                        child: _isVerifyingPin
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text('Подтвердить код'),
-                      ),
-                    ),
-                  ],
-                ],
+            // Кнопка регистрации
+            SizedBox(
+              height: 48,
+              child: FilledButton.icon(
+                icon: _isInitializingAuto
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.person_add_rounded, size: 20),
+                label: Text(
+                  _isInitializingAuto
+                      ? 'Ожидание кода: $_autoSecondsElapsed сек (до 3 мин)...'
+                      : 'Зарегистрироваться (автоматически)',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+                onPressed: (_isInitializingAuto || _isLoggingIn) ? null : _startAutoRegistration,
               ),
             ),
+            if (_isInitializingAuto) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Сервер ожидает код подтверждения от НПК ИНФИНИТИ (до 3 мин). Пожалуйста, не закрывайте страницу...',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+              ),
+            ],
 
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 20),
               child: Row(
                 children: [
                   Expanded(child: Divider()),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('или', style: TextStyle(color: Colors.grey)),
+                    child: Text('или войдите в существующий аккаунт', style: TextStyle(color: Colors.grey, fontSize: 13)),
                   ),
                   Expanded(child: Divider()),
                 ],
               ),
             ),
 
-            // Вариант 2: Автоматический временный ящик
-            OutlinedButton.icon(
-              icon: _isInitializingAuto
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_mode_rounded, size: 18),
-              label: Text(
-                _isInitializingAuto
-                    ? 'Ожидание кода: $_autoSecondsElapsed сек (до 3 мин)...'
-                    : 'Сгенерировать временный e-mail (авто)',
+            // Форма входа в аккаунт
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.2)),
               ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Form(
+                key: _loginFormKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.login_rounded, color: Colors.blue.shade700, size: 22),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Вход в аккаунт',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Для действующих партнеров и зарегистрированных пользователей.',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    ),
+                    if (_loginErrorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          _loginErrorMessage!,
+                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _loginUsernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Логин, ID партнера или E-mail',
+                        hintText: 'Например, 23316 или user@mail.ru',
+                        prefixIcon: const Icon(Icons.person_outline),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                      validator: (val) => (val == null || val.trim().isEmpty) ? 'Введите логин, ID или E-mail' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _loginPasswordController,
+                      obscureText: _loginObscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Пароль',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_loginObscurePassword ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => _loginObscurePassword = !_loginObscurePassword),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                      validator: (val) => (val == null || val.trim().isEmpty) ? 'Введите пароль' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 46,
+                      child: FilledButton(
+                        onPressed: _isLoggingIn ? null : _submitLogin,
+                        child: _isLoggingIn
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Войти в аккаунт', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Center(
+                      child: TextButton(
+                        onPressed: () async {
+                          final uri = Uri.parse('https://infinity-mlm.com/user/login?ReturnUrl=%2Fuser%2Fmyaccount');
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: const Text('Забыли пароль? Восстановить на сайте', style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              onPressed: (_isInitializingAuto || _isSendingPin) ? null : _startAutoRegistration,
             ),
-            if (_isInitializingAuto) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Сервер ожидает письмо от НПК ИНФИНИТИ (обычно занимает 60–120 сек). Пожалуйста, не закрывайте страницу...',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
-              ),
-            ],
           ],
         ),
       ),
