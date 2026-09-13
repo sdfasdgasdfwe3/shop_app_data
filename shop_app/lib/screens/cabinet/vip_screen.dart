@@ -1844,9 +1844,16 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
       final res = await http.get(Uri.parse('${widget.apiBaseUrl}/api/vip/requests')).timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
+        final List rawRequests = data['requests'] ?? [];
+        final List rawAllowed = data['allowedIds'] ?? [];
+        final allowedList = rawAllowed.map((e) => e.toString()).toList();
         setState(() {
-          _requests = data['requests'] ?? [];
-          _allowedIds = data['allowedIds'] ?? [];
+          _allowedIds = allowedList;
+          _requests = rawRequests.where((r) {
+            final st = (r['status'] ?? 'pending').toString();
+            final pid = (r['partnerId'] ?? '').toString().trim();
+            return st == 'pending' && !allowedList.contains(pid);
+          }).toList();
           _isLoading = false;
         });
         return;
@@ -1870,6 +1877,10 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(backgroundColor: Colors.green, content: Text('Доступ для ID $clean успешно предоставлен!')),
         );
+        setState(() {
+          _requests.removeWhere((r) => (r['partnerId'] ?? '').toString().trim() == clean);
+          if (!_allowedIds.contains(clean)) _allowedIds.add(clean);
+        });
         _loadAdminData();
         widget.onAccessChanged();
       }
@@ -1891,6 +1902,9 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Доступ для ID $clean отозван')),
         );
+        setState(() {
+          _allowedIds.remove(clean);
+        });
         _loadAdminData();
         widget.onAccessChanged();
       }
@@ -1898,18 +1912,22 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
   }
 
   Future<void> _rejectRequest(String requestId, String partnerId) async {
+    final clean = partnerId.toLowerCase().replaceAll(RegExp(r'^(?:id|ид)[\s:#№-]*', caseSensitive: false), '').trim();
     try {
       final res = await http.post(
         Uri.parse('${widget.apiBaseUrl}/api/vip/reject'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'requestId': requestId, 'partnerId': partnerId}),
+        body: jsonEncode({'requestId': requestId, 'partnerId': clean}),
       );
       final data = jsonDecode(utf8.decode(res.bodyBytes));
       if (!mounted) return;
       if (data['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Заявка отклонена')),
+          SnackBar(content: Text('Заявка ID $clean отклонена и удалена')),
         );
+        setState(() {
+          _requests.removeWhere((r) => (r['id'] ?? '').toString() == requestId || (r['partnerId'] ?? '').toString().trim() == clean);
+        });
         _loadAdminData();
         widget.onAccessChanged();
       }
@@ -2018,8 +2036,8 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
             children: [
               Icon(Icons.inbox_outlined, size: 48, color: Colors.grey),
               SizedBox(height: 8),
-              Text('Нет входящих заявок', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              Text('Когда партнер отправит запрос, он появится здесь.', style: TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
+              Text('Нет заявок, ожидающих решения', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text('Когда партнер отправит запрос на подключение, он появится здесь.', style: TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -2037,8 +2055,6 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
         final fio = (r['fio'] ?? '').toString();
         final phone = (r['phone'] ?? '').toString();
         final comment = (r['comment'] ?? '').toString();
-        final status = (r['status'] ?? 'pending').toString();
-        final isApproved = status == 'approved' || _allowedIds.contains(id);
 
         return Card(
           elevation: 1,
@@ -2056,18 +2072,16 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isApproved ? Colors.green.shade50 : (status == 'rejected' ? Colors.red.shade50 : Colors.amber.shade50),
+                        color: Colors.amber.shade50,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: isApproved ? Colors.green.shade300 : (status == 'rejected' ? Colors.red.shade300 : Colors.amber.shade300),
-                        ),
+                        border: Border.all(color: Colors.amber.shade300),
                       ),
                       child: Text(
-                        isApproved ? 'ОДОБРЕНО' : (status == 'rejected' ? 'ОТКЛОНЕНО' : 'ОЖИДАЕТ'),
+                        'ОЖИДАЕТ РЕШЕНИЯ',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: isApproved ? Colors.green.shade800 : (status == 'rejected' ? Colors.red.shade800 : Colors.amber.shade900),
+                          color: Colors.amber.shade900,
                         ),
                       ),
                     ),
@@ -2089,37 +2103,32 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
                     child: Text(comment, style: const TextStyle(fontSize: 12, color: Colors.black87)),
                   ),
                 ],
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Row(
                   children: [
-                    if (!isApproved) ...[
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.check, size: 16),
-                          label: const Text('Одобрить доступ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          onPressed: () => _allowId(id),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
+                        icon: const Icon(Icons.check, size: 16),
+                        label: const Text('Одобрить доступ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        onPressed: () => _allowId(id),
                       ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                        onPressed: () => _rejectRequest((r['id'] ?? '').toString(), id),
-                        child: const Text('Отклонить', style: TextStyle(fontSize: 12)),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                    ] else ...[
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                        icon: const Icon(Icons.block, size: 16),
-                        label: const Text('Отозвать доступ', style: TextStyle(fontSize: 12)),
-                        onPressed: () => _revokeId(id),
-                      ),
-                    ],
+                      onPressed: () => _rejectRequest((r['id'] ?? '').toString(), id),
+                      child: const Text('Отклонить', style: TextStyle(fontSize: 12)),
+                    ),
                   ],
                 ),
               ],
