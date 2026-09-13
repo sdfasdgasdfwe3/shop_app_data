@@ -7,12 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'cabinet/accounts_screen.dart';
-import 'cabinet/bonus_report_screen.dart';
 import 'cabinet/downline_screen.dart';
-import 'cabinet/invited_screen.dart';
 import 'cabinet/sales_history_screen.dart';
 import 'cabinet/upline_screen.dart';
-import 'cabinet/edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool showAppBar;
@@ -1164,12 +1161,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'БОНУС',
                     value: bonus,
                     subtitle: 'Разница: $bonusIncrease',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => BonusReportScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
-                      ),
-                    ),
                   ),
                 ),
               ],
@@ -1251,18 +1242,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             _buildCabinetQuickLink(
-              icon: Icons.group_add,
-              title: 'Лично приглашенные',
-              subtitle: 'Партнеры первой линии со связью по телефону и WhatsApp',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (ctx) => InvitedScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildCabinetQuickLink(
               icon: Icons.supervisor_account,
               title: 'Вышестоящие участники (Спонсоры)',
               subtitle: 'Цепочка наставников вплоть до руководства компании',
@@ -1275,18 +1254,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             _buildCabinetQuickLink(
-              icon: Icons.emoji_events,
-              title: 'Мои вознаграждения',
-              subtitle: 'Начисления бонусов по расчетным периодам',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (ctx) => BonusReportScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildCabinetQuickLink(
               icon: Icons.shopping_bag_outlined,
               title: 'История заказов',
               subtitle: 'Накладные, баллы (ЛО), склады и статусы',
@@ -1294,25 +1261,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (ctx) => SalesHistoryScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildCabinetQuickLink(
-              icon: Icons.badge_outlined,
-              title: 'Изменение личных данных',
-              subtitle: 'Редактирование ФИО, города и смена пароля',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (ctx) => EditProfileScreen(
-                    user: _savedUser!,
-                    apiBaseUrl: apiBaseUrl,
-                    onProfileUpdated: () {
-                      _loadSavedUser();
-                      _refreshCabinetStats();
-                    },
-                  ),
                 ),
               ),
             ),
