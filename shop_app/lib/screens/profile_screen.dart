@@ -905,7 +905,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final lopIncrease = stats?['lopIncrease'] ?? '0%';
     final bonus = stats?['bonus'] ?? '0 ₽';
     final bonusIncrease = stats?['bonusIncrease'] ?? '0%';
-    final stock = stats?['stock'] ?? '0 ₽';
+    final stock = stats?['stock'] ?? '0 Бонус';
 
     return Card(
       elevation: 0,
@@ -1332,12 +1332,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color.withValues(alpha: 0.9),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color.withValues(alpha: 0.9),
+              ),
             ),
           ),
           const SizedBox(height: 2),

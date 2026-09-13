@@ -23,6 +23,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
   List<dynamic> _accounts = [];
   List<dynamic> _operations = [];
   String? _emptyMessage;
+  String? _stock;
 
   @override
   void initState() {
@@ -52,6 +53,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
           _accounts = data['accounts'] ?? [];
           _operations = data['operations'] ?? [];
           _emptyMessage = data['message'];
+          if (data['stock'] != null && data['stock'].toString().isNotEmpty) {
+            _stock = data['stock'].toString();
+          }
           _isLoading = false;
         });
       } else {
@@ -122,57 +126,65 @@ class _AccountsScreenState extends State<AccountsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Общий баланс из статистики кабинета (если есть)
-        if (widget.user['stats'] != null && widget.user['stats']['stock'] != null) ...[
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade800, Colors.blue.shade600],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.shade900.withValues(alpha: 0.25),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+        // Общий баланс из статистики кабинета
+        Builder(
+          builder: (context) {
+            final currentStock = _stock ?? widget.user['stats']?['stock'] ?? '0 Бонус';
+            final bonus = widget.user['stats']?['bonus'] ?? '0 ₽';
+            return Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade800, Colors.blue.shade600],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Текущий остаток',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    Icon(Icons.account_balance_wallet, color: Colors.white70, size: 22),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  widget.user['stats']['stock'] ?? '0 ₽',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.shade900.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Начисленный бонус: ${widget.user['stats']['bonus'] ?? '0 ₽'}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Текущий остаток',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      Icon(Icons.account_balance_wallet, color: Colors.white70, size: 22),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      currentStock,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Начисленный бонус: $bonus',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 20),
 
         // Счета
         if (_accounts.isNotEmpty) ...[
