@@ -604,36 +604,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     }
   }
 
-  void _sendWhatsAppMessage(Map<String, dynamic> partner) async {
-    final phone = (partner['phone'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
-    final fio = (partner['fio'] ?? '').toString();
-    final id = (partner['id'] ?? '').toString();
 
-    if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Номер телефона для этого партнера не найден в структуре')),
-      );
-      return;
-    }
-
-    final message =
-        'Здравствуйте, $fio! Вас беспокоит спонсор из НПК «Инфинити». Напоминаю, что в следующем месяце истекает 12 месяцев с вашей последней покупки, и ваш ID $id может быть аннулирован компанией. Для сохранения скидки, статуса и структуры достаточно сделать любой заказ в этом месяце. Буду рад помочь вам с оформлением!';
-
-    final uri = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось открыть WhatsApp: $e')),
-        );
-      }
-    }
-  }
 
 
   // ===================== ПАНЕЛЬ АДМИНИСТРАТОРА =====================
@@ -714,19 +685,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     );
   }
 
-  void _callPhone(String rawPhone) async {
-    final clean = rawPhone.replaceAll(RegExp(r'[^\d+]'), '');
-    if (clean.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Телефон не указан')),
-      );
-      return;
-    }
-    final uri = Uri.parse('tel:$clean');
-    try {
-      await launchUrl(uri);
-    } catch (_) {}
-  }
+
 
   // ===================== BUILD UI =====================
 
@@ -1715,11 +1674,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Правило компании: партнер удаляется через 12 месяцев без покупок. В этом списке собраны партнеры, чья последняя покупка была 11 месяцев назад. Предупредите их сейчас, чтобы сохранить структуру и баллы!',
-                  style: TextStyle(color: Colors.white, fontSize: 12, height: 1.3),
-                ),
+
               ],
             ),
           ),
@@ -1843,11 +1798,11 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                             },
                             child: const Icon(Icons.copy, size: 14, color: Colors.black54),
                           ),
-                          if (city.isNotEmpty) ...[
+                          if (city.isNotEmpty || phone.isNotEmpty) ...[
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                '• $city',
+                                [if (city.isNotEmpty) '• $city', if (phone.isNotEmpty) '• $phone'].join(' '),
                                 style: const TextStyle(fontSize: 12, color: Colors.black54),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1900,44 +1855,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                   Text('ЛОП: $lopCum', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black54)),
               ],
             ),
-            const SizedBox(height: 10),
 
-            // Action Buttons
-            Row(
-              children: [
-                if (phone.isNotEmpty) ...[
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: const Icon(Icons.chat_rounded, size: 16),
-                      label: const Text('WhatsApp', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      onPressed: () => _sendWhatsAppMessage(partner),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    icon: const Icon(Icons.phone, size: 18),
-                    tooltip: 'Позвонить',
-                    onPressed: () => _callPhone(phone),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                IconButton.filledTonal(
-                  icon: const Icon(Icons.share_outlined, size: 18),
-                  tooltip: 'Скопировать контакт',
-                  onPressed: () {
-                    final text = 'Партнер НПК Инфинити: $fio (ID: $id)\nТелефон: $phone\nГород: $city\nПоследняя покупка: $lastSaleDate';
-                    Clipboard.setData(ClipboardData(text: text));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Данные контакта скопированы')));
-                  },
-                ),
-              ],
-            ),
           ],
         ),
       ),
