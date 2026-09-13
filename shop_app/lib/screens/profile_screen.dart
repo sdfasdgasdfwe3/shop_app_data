@@ -104,8 +104,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _savedUser = parsed;
         });
-        // Auto-refresh cabinet metrics if missing referral link or stats
-        if (parsed['referralLink'] == null || parsed['stats'] == null) {
+        // Auto-refresh cabinet metrics if missing referral link, stats, or full FIO
+        if (parsed['referralLink'] == null ||
+            parsed['stats'] == null ||
+            parsed['partnerFio'] == null ||
+            (parsed['partnerFio'] as String).isEmpty) {
           _refreshCabinetStats();
         }
       }
@@ -126,11 +129,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_savedUser == null) return;
     setState(() => _isRefreshingCabinet = true);
     try {
-      final ticket = _savedUser!['ticket'] ?? '';
+      final ticket = _savedUser!['ticket'] ?? _savedUser!['partnersTicket'] ?? '';
       final guid = _savedUser!['partnersGuid'] ?? '';
-      final response = await http
-          .get(Uri.parse('$apiBaseUrl/api/cabinet?ticket=$ticket&guid=$guid'))
-          .timeout(const Duration(seconds: 15));
+      final utckt = _savedUser!['usersTicket'] ?? _savedUser!['utckt'] ?? '';
+      final login = _savedUser!['login'] ?? _savedUser!['email'] ?? _savedUser!['partnerId'] ?? '';
+      final password = _savedUser!['password'] ?? '';
+
+      final url = Uri.parse(
+        '$apiBaseUrl/api/cabinet?ticket=$ticket&guid=$guid&utckt=$utckt&login=${Uri.encodeComponent(login)}&password=${Uri.encodeComponent(password)}',
+      );
+      final response = await http.get(url).timeout(const Duration(seconds: 25));
       if (!mounted) return;
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       if (data['success'] == true) {
@@ -149,6 +157,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
         if (data['partnerName'] != null && (data['partnerName'] as String).isNotEmpty) {
           updated['partnerName'] = data['partnerName'];
+        }
+        if (data['partnerFio'] != null && (data['partnerFio'] as String).isNotEmpty) {
+          updated['partnerFio'] = data['partnerFio'];
+        }
+        if (data['ticket'] != null && (data['ticket'] as String).isNotEmpty) {
+          updated['ticket'] = data['ticket'];
+          updated['partnersTicket'] = data['ticket'];
+        }
+        if (data['usersTicket'] != null && (data['usersTicket'] as String).isNotEmpty) {
+          updated['usersTicket'] = data['usersTicket'];
+          updated['utckt'] = data['usersTicket'];
         }
         if (data['stats'] != null) {
           updated['stats'] = data['stats'];
@@ -194,17 +213,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       if (data['success'] == true && data['user'] != null) {
+        final userData = Map<String, dynamic>.from(data['user']);
+        userData['password'] = password;
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('saved_auth_user', jsonEncode(data['user']));
+        await prefs.setString('saved_auth_user', jsonEncode(userData));
         if (mounted) {
           setState(() {
-            _savedUser = Map<String, dynamic>.from(data['user']);
+            _savedUser = userData;
             _isLoggingIn = false;
           });
           widget.onLoginStateChanged?.call();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Вход выполнен! Добро пожаловать, ${_savedUser?['partnerName'] ?? _savedUser?['partnerId'] ?? username}'),
+              content: Text('Вход выполнен! Добро пожаловать, ${_savedUser?['partnerFio'] ?? _savedUser?['partnerName'] ?? _savedUser?['partnerId'] ?? username}'),
               backgroundColor: Colors.green.shade700,
             ),
           );
@@ -853,13 +874,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileCard() {
     final email = _savedUser!['email'] ?? '';
-    final name = (_savedUser!['partnerName'] != null && (_savedUser!['partnerName'] as String).isNotEmpty)
-        ? (_savedUser!['partnerName'] as String).trim()
-        : '${_savedUser!['lastName'] ?? ''} ${_savedUser!['firstName'] ?? ''}'.trim();
+    final partnerFio = (_savedUser!['partnerFio'] ?? _savedUser!['fio'] ?? '').toString().trim();
+    final partnerName = (_savedUser!['partnerName'] ?? '').toString().trim();
+    final combinedFio = '${_savedUser!['lastName'] ?? ''} ${_savedUser!['firstName'] ?? ''} ${_savedUser!['patronymic'] ?? ''}'.trim();
+    final partnerId = (_savedUser!['partnerId'] ?? '').toString().trim();
+
+    String displayFio = '';
+    if (partnerFio.isNotEmpty) {
+      displayFio = partnerFio;
+    } else if (combinedFio.isNotEmpty) {
+      displayFio = combinedFio;
+    } else if (partnerName.isNotEmpty) {
+      displayFio = partnerName;
+    } else if (partnerId.isNotEmpty) {
+      displayFio = 'Партнер #$partnerId';
+    } else {
+      displayFio = 'Партнер Инфинити';
+    }
+
     final phone = _savedUser!['phone'] ?? '';
     final city = _savedUser!['city'] ?? '';
     final password = _savedUser!['password'] ?? '';
-    final partnerId = (_savedUser!['partnerId'] ?? '').toString().trim();
     final sponsorFio = (_savedUser!['sponsorFio'] ?? '').toString().trim();
     final sponsorId = (_savedUser!['sponsor'] ?? '').toString().trim();
     final referralLink = (_savedUser!['referralLink'] ?? '').toString().trim();
@@ -903,17 +938,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // ФИО и ID номер
                       Text(
-                        name.isNotEmpty ? name : 'Партнер Инфинити',
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                        partnerId.isNotEmpty && !displayFio.contains(partnerId)
+                            ? '$displayFio (ID: $partnerId)'
+                            : displayFio,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
+                          if (partnerId.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'ID: $partnerId',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.1),
+                              color: Colors.blue.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
@@ -1233,6 +1289,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            _buildInfoRow('ФИО', displayFio),
+            if (partnerId.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _buildInfoRow('ID партнера', partnerId, isCopyable: true),
+            ],
             const SizedBox(height: 10),
             _buildInfoRow('Телефон', phone.isNotEmpty ? '+7 $phone' : '—'),
             const SizedBox(height: 10),
