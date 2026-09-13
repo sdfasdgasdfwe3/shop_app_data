@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -91,9 +92,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final prefs = await SharedPreferences.getInstance();
       final userStr = prefs.getString('saved_auth_user');
       if (userStr != null && userStr.isNotEmpty) {
+        final parsed = jsonDecode(userStr);
         setState(() {
-          _savedUser = jsonDecode(userStr);
+          _savedUser = parsed;
         });
+        // Auto-refresh cabinet metrics if missing referral link or stats
+        if (parsed['referralLink'] == null || parsed['stats'] == null) {
+          _refreshCabinetStats();
+        }
       }
     } catch (e) {
       debugPrint('Ошибка загрузки профиля: $e');
@@ -102,6 +108,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _isLoadingUser = false;
         });
+      }
+    }
+  }
+
+  bool _isRefreshingCabinet = false;
+
+  Future<void> _refreshCabinetStats() async {
+    if (_savedUser == null) return;
+    setState(() => _isRefreshingCabinet = true);
+    try {
+      final ticket = _savedUser!['ticket'] ?? '';
+      final guid = _savedUser!['partnersGuid'] ?? '';
+      final response = await http
+          .get(Uri.parse('$apiBaseUrl/api/cabinet?ticket=$ticket&guid=$guid'))
+          .timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      if (data['success'] == true) {
+        final updated = Map<String, dynamic>.from(_savedUser!);
+        if (data['referralLink'] != null && (data['referralLink'] as String).isNotEmpty) {
+          updated['referralLink'] = data['referralLink'];
+        }
+        if (data['partnersGuid'] != null && (data['partnersGuid'] as String).isNotEmpty) {
+          updated['partnersGuid'] = data['partnersGuid'];
+        }
+        if (data['warehouse'] != null && (data['warehouse'] as String).isNotEmpty) {
+          updated['warehouse'] = data['warehouse'];
+        }
+        if (data['partnerId'] != null && (data['partnerId'] as String).isNotEmpty) {
+          updated['partnerId'] = data['partnerId'];
+        }
+        if (data['partnerName'] != null && (data['partnerName'] as String).isNotEmpty) {
+          updated['partnerName'] = data['partnerName'];
+        }
+        if (data['stats'] != null) {
+          updated['stats'] = data['stats'];
+        }
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('saved_auth_user', jsonEncode(updated));
+        setState(() {
+          _savedUser = updated;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error refreshing cabinet stats: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshingCabinet = false);
       }
     }
   }
@@ -385,17 +439,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final sponsorVal = (data['sponsor'] ?? _sponsorController.text.trim()).toString().trim();
         final sponsorFioVal = (data['sponsorFio'] ?? _sponsorFio ?? '').toString().trim();
 
+        final referralLink = (data['referralLink'] ?? '').toString().trim();
+        final partnersGuid = (data['partnersGuid'] ?? '').toString().trim();
+        final warehouse = (data['warehouse'] ?? '★ Главный').toString().trim();
+        final partnerName = (data['partnerName'] ?? '').toString().trim();
+        final stats = data['stats'] is Map ? Map<String, dynamic>.from(data['stats']) : null;
+
         final userData = {
           'email': email,
           'password': password,
           'lastName': _lastNameController.text.trim(),
           'firstName': _firstNameController.text.trim(),
+          'partnerName': partnerName,
           'city': _cityController.text.trim(),
           'phone': _phoneController.text.trim(),
           'sponsor': sponsorVal,
           'sponsorFio': sponsorFioVal,
           'ticket': (data['ticket'] ?? '').toString().trim(),
           'partnerId': partnerId,
+          'partnersGuid': partnersGuid,
+          'referralLink': referralLink,
+          'warehouse': warehouse,
+          'stats': stats,
           'registeredAt': DateTime.now().toIso8601String(),
         };
 
@@ -409,7 +474,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _isSubmitting = false;
           });
 
-          _showRegistrationSuccessDialog(partnerId, email, password, sponsorFioVal);
+          _showRegistrationSuccessDialog(
+            partnerId: partnerId,
+            email: email,
+            password: password,
+            sponsorFio: sponsorFioVal,
+            referralLink: referralLink,
+            warehouse: warehouse,
+          );
           widget.onLoginStateChanged?.call();
         }
       } else {
@@ -524,7 +596,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showRegistrationSuccessDialog(String partnerId, String email, String password, [String? sponsorFio]) {
+  void _showRegistrationSuccessDialog({
+    required String partnerId,
+    required String email,
+    required String password,
+    String? sponsorFio,
+    String? referralLink,
+    String? warehouse,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -542,85 +621,240 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Вы успешно зарегистрированы в НПК ИНФИНИТИ!',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            if (sponsorFio != null && sponsorFio.isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.group, color: Colors.green, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Ваш спонсор: $sponsorFio',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Вы успешно зарегистрированы в НПК ИНФИНИТИ!',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              if (sponsorFio != null && sponsorFio.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.group, color: Colors.green, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Ваш спонсор: $sponsorFio',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (partnerId.isNotEmpty) ...[
+                const SizedBox(height: 12),
+              ],
+              if (partnerId.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ваш ID номер партнера:',
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            partnerId,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: partnerId));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('ID партнера скопирован'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(Icons.copy, size: 20, color: Colors.blue),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (referralLink != null && referralLink.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.purple.withValues(alpha: 0.25)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.share_outlined, size: 16, color: Colors.purple),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Ваша реферальная ссылка:',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        referralLink,
+                        style: const TextStyle(fontSize: 11, color: Colors.black87),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.copy, size: 14),
+                              label: const Text('Копировать', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.purple,
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                side: const BorderSide(color: Colors.purple),
+                              ),
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: referralLink));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Реферальная ссылка скопирована'), duration: Duration(seconds: 1)),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.share, size: 14),
+                              label: const Text('Поделиться', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.purple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                              ),
+                              onPressed: () {
+                                Share.share('Присоединяйтесь к НПК ИНФИНИТИ: $referralLink');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                  color: Colors.grey.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Ваш ID номер партнера:',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 4),
+                    if (warehouse != null && warehouse.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.storefront_outlined, size: 16, color: Colors.black54),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Склад: $warehouse',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 14),
+                    ],
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          partnerId,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                            letterSpacing: 1.5,
+                        Expanded(
+                          child: Text(
+                            'Логин: $email',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         InkWell(
                           onTap: () {
-                            Clipboard.setData(ClipboardData(text: partnerId));
+                            Clipboard.setData(ClipboardData(text: email));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('ID партнера скопирован'),
+                                content: Text('Логин скопирован'),
                                 duration: Duration(seconds: 1),
                               ),
                             );
                           },
                           child: const Padding(
-                            padding: EdgeInsets.all(6),
-                            child: Icon(Icons.copy, size: 20, color: Colors.blue),
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.copy, size: 16, color: Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Пароль: $password',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: password));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Пароль скопирован'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.copy, size: 16, color: Colors.blue),
                           ),
                         ),
                       ],
@@ -628,84 +862,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
+              Text(
+                'Все данные сохранены в вашем профиле приложения.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
             ],
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Логин: $email',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: email));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Логин скопирован'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Icon(Icons.copy, size: 16, color: Colors.blue),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Пароль: $password',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: password));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Пароль скопирован'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Icon(Icons.copy, size: 16, color: Colors.blue),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Данные сохранены в вашем профиле приложения.',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-          ],
+          ),
         ),
         actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: const Text('В кабинет'),
+            onPressed: () async {
+              final url = Uri.parse('https://infinity-mlm.com/user/myaccount');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx),
             style: ElevatedButton.styleFrom(
@@ -722,13 +897,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileCard() {
     final email = _savedUser!['email'] ?? '';
-    final name = '${_savedUser!['lastName'] ?? ''} ${_savedUser!['firstName'] ?? ''}'.trim();
+    final name = (_savedUser!['partnerName'] != null && (_savedUser!['partnerName'] as String).isNotEmpty)
+        ? (_savedUser!['partnerName'] as String).trim()
+        : '${_savedUser!['lastName'] ?? ''} ${_savedUser!['firstName'] ?? ''}'.trim();
     final phone = _savedUser!['phone'] ?? '';
     final city = _savedUser!['city'] ?? '';
     final password = _savedUser!['password'] ?? '';
     final partnerId = (_savedUser!['partnerId'] ?? '').toString().trim();
     final sponsorFio = (_savedUser!['sponsorFio'] ?? '').toString().trim();
     final sponsorId = (_savedUser!['sponsor'] ?? '').toString().trim();
+    final referralLink = (_savedUser!['referralLink'] ?? '').toString().trim();
+    final partnersGuid = (_savedUser!['partnersGuid'] ?? '').toString().trim();
+    final effectiveRefLink = referralLink.isNotEmpty
+        ? referralLink
+        : (partnersGuid.isNotEmpty
+            ? 'https://infinity-mlm.com/user/registration?ref=$partnersGuid&warehouse=1'
+            : '');
+    final warehouse = (_savedUser!['warehouse'] ?? '★ Главный').toString().trim();
+    final stats = _savedUser!['stats'] is Map ? Map<String, dynamic>.from(_savedUser!['stats']) : null;
+    final partnersCount = stats?['partnersCount'] ?? '0';
+    final partnersCountIncrease = stats?['partnersCountIncrease'] ?? '0%';
+    final lop = stats?['lop'] ?? '0.00';
+    final lopIncrease = stats?['lopIncrease'] ?? '0%';
+    final bonus = stats?['bonus'] ?? '0 ₽';
+    final bonusIncrease = stats?['bonusIncrease'] ?? '0%';
+    final stock = stats?['stock'] ?? '0 ₽';
 
     return Card(
       elevation: 0,
@@ -737,41 +930,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
         side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.15)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 1. Header with Avatar, Name, Email, Warehouse, Refresh
             Row(
               children: [
                 CircleAvatar(
-                  radius: 28,
+                  radius: 26,
                   backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                  child: const Icon(Icons.person, size: 32, color: Colors.blue),
+                  child: const Icon(Icons.person, size: 30, color: Colors.blue),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         name.isNotEmpty ? name : 'Партнер Инфинити',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                        overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Партнер НПК ИНФИНИТИ',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.blue),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              warehouse,
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
+                IconButton(
+                  icon: _isRefreshingCabinet
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh, size: 20),
+                  tooltip: 'Обновить данные кабинета',
+                  onPressed: _isRefreshingCabinet ? null : _refreshCabinetStats,
+                ),
               ],
             ),
-            const Divider(height: 32),
+            const Divider(height: 28),
+
+            // 2. Partner ID block
             if (partnerId.isNotEmpty) ...[
               Container(
-                margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.blue.withValues(alpha: 0.08),
@@ -820,51 +1044,335 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 14),
             ],
-            _buildInfoRow('Телефон', phone.isNotEmpty ? '+7 $phone' : '—'),
-            const SizedBox(height: 12),
-            _buildInfoRow('Город', city.isNotEmpty ? city : '—'),
-            const SizedBox(height: 12),
-            _buildInfoRow('E-mail (логин)', email, isCopyable: true),
-            const SizedBox(height: 12),
-            _buildInfoRow('Пароль', password, isCopyable: true),
-            if (partnerId.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildInfoRow('ID партнера', partnerId, isCopyable: true),
+
+            // 3. Referral Program Card ("Ссылки для новых участников")
+            if (effectiveRefLink.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.deepPurple.shade50,
+                      Colors.purple.shade50,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.purple.withValues(alpha: 0.25)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.group_add, color: Colors.purple, size: 18),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Ссылки для новых участников',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.purple),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Реферальная ссылка на регистрацию:',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Text(
+                        effectiveRefLink,
+                        style: const TextStyle(fontSize: 11, color: Colors.black87),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.copy, size: 14),
+                            label: const Text('Скопировать', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.purple,
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              side: const BorderSide(color: Colors.purple),
+                            ),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: effectiveRefLink));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Реферальная ссылка скопирована'), duration: Duration(seconds: 1)),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.share, size: 14),
+                            label: const Text('Поделиться', style: TextStyle(fontSize: 12)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                            ),
+                            onPressed: () {
+                              Share.share('Присоединяйтесь к НПК ИНФИНИТИ: $effectiveRefLink');
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
-            if (sponsorFio.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildInfoRow('Спонсор', sponsorFio),
-            ] else if (sponsorId.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildInfoRow('ID спонсора', sponsorId),
-            ],
-            const Divider(height: 32),
+
+            // 4. Cabinet Metrics / Widgets (4 cards: РЕКРУТЫ, БОНУС, ЛО, ОСТАТОК)
             Row(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.open_in_new, size: 18),
-                    label: const Text('Кабинет Инфинити'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () async {
-                      final url = Uri.parse('https://infinity-mlm.com/user/login');
-                      if (await canLaunchUrl(url)) {
-                        await launchUrl(url, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                IconButton.outlined(
-                  icon: const Icon(Icons.logout, color: Colors.red),
-                  tooltip: 'Выйти из аккаунта',
-                  onPressed: _logout,
+                const Icon(Icons.dashboard_outlined, size: 16, color: Colors.black87),
+                const SizedBox(width: 6),
+                const Text(
+                  'Показатели личного кабинета',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    icon: Icons.work_outline,
+                    color: Colors.blue,
+                    title: 'РЕКРУТЫ',
+                    value: partnersCount,
+                    subtitle: 'Разница: $partnersCountIncrease',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildStatCard(
+                    icon: Icons.card_giftcard,
+                    color: Colors.orange.shade800,
+                    title: 'БОНУС',
+                    value: bonus,
+                    subtitle: 'Разница: $bonusIncrease',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    icon: Icons.pie_chart,
+                    color: Colors.teal,
+                    title: 'ЛО (ЛИЧНЫЙ ОБЪЕМ)',
+                    value: lop,
+                    subtitle: 'Разница: $lopIncrease',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildStatCard(
+                    icon: Icons.account_balance_wallet,
+                    color: Colors.green.shade700,
+                    title: 'ОСТАТОК',
+                    value: stock,
+                    subtitle: 'Счета и баланс',
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 28),
+
+            // 5. Personal account info
+            Row(
+              children: [
+                const Icon(Icons.person_outline, size: 16, color: Colors.black87),
+                const SizedBox(width: 6),
+                const Text(
+                  'Данные профиля',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildInfoRow('Телефон', phone.isNotEmpty ? '+7 $phone' : '—'),
+            const SizedBox(height: 10),
+            _buildInfoRow('Город', city.isNotEmpty ? city : '—'),
+            const SizedBox(height: 10),
+            _buildInfoRow('Склад', warehouse),
+            const SizedBox(height: 10),
+            _buildInfoRow('E-mail (логин)', email, isCopyable: true),
+            const SizedBox(height: 10),
+            _buildInfoRow('Пароль', password, isCopyable: true),
+            if (sponsorFio.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _buildInfoRow('Спонсор', sponsorFio),
+            ] else if (sponsorId.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _buildInfoRow('ID спонсора', sponsorId),
+            ],
+            const Divider(height: 28),
+
+            // 6. Cabinet quick links
+            Row(
+              children: [
+                const Icon(Icons.open_in_new, size: 16, color: Colors.black87),
+                const SizedBox(width: 6),
+                const Text(
+                  'Разделы кабинета на сайте',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildCabinetQuickLink(
+              icon: Icons.dashboard,
+              title: 'Личный кабинет (Главная)',
+              url: 'https://infinity-mlm.com/user/myaccount',
+            ),
+            const SizedBox(height: 6),
+            _buildCabinetQuickLink(
+              icon: Icons.account_balance,
+              title: 'Мои счета',
+              url: 'https://infinity-mlm.com/user/accounts',
+            ),
+            const SizedBox(height: 6),
+            _buildCabinetQuickLink(
+              icon: Icons.account_tree,
+              title: 'Нижестоящие участники (Структура)',
+              url: 'https://infinity-mlm.com/user/reportdownline',
+            ),
+            const SizedBox(height: 6),
+            _buildCabinetQuickLink(
+              icon: Icons.people,
+              title: 'Лично приглашенные',
+              url: 'https://infinity-mlm.com/user/reportpartnerpersonalinvited',
+            ),
+            const SizedBox(height: 6),
+            _buildCabinetQuickLink(
+              icon: Icons.emoji_events,
+              title: 'Мои вознаграждения',
+              url: 'https://infinity-mlm.com/user/reportbonus',
+            ),
+            const SizedBox(height: 6),
+            _buildCabinetQuickLink(
+              icon: Icons.history,
+              title: 'История заказов',
+              url: 'https://infinity-mlm.com/user/saleshistory',
+            ),
+            const Divider(height: 28),
+
+            // 7. Logout button
+            Center(
+              child: TextButton.icon(
+                icon: const Icon(Icons.logout, color: Colors.red, size: 18),
+                label: const Text('Выйти из аккаунта', style: TextStyle(color: Colors.red)),
+                onPressed: _logout,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String value,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCabinetQuickLink({
+    required IconData icon,
+    required String title,
+    required String url,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: Colors.blue.shade700),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400),
           ],
         ),
       ),
