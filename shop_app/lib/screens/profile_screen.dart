@@ -57,6 +57,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _obscurePassword = true;
 
+  // Поиск спонсора
+  String? _sponsorFio;
+  bool _isCheckingSponsor = false;
+  String? _sponsorError;
+  Timer? _sponsorDebounce;
+
   @override
   void initState() {
     super.initState();
@@ -76,6 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _sponsorController.dispose();
     _captchaController.dispose();
     _autoTimer?.cancel();
+    _sponsorDebounce?.cancel();
     super.dispose();
   }
 
@@ -220,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final response = await http
           .get(Uri.parse('$apiBaseUrl/api/session'))
-          .timeout(const Duration(seconds: 140));
+          .timeout(const Duration(seconds: 200));
 
       final data = jsonDecode(response.body);
       if (data['success'] == true) {
@@ -243,6 +250,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } finally {
       _autoTimer?.cancel();
     }
+  }
+
+  void _onSponsorChanged(String value) {
+    _sponsorDebounce?.cancel();
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      setState(() {
+        _isCheckingSponsor = false;
+        _sponsorFio = null;
+        _sponsorError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingSponsor = true;
+      _sponsorFio = null;
+      _sponsorError = null;
+    });
+
+    _sponsorDebounce = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final response = await http
+            .get(Uri.parse('$apiBaseUrl/api/sponsor?sid=${Uri.encodeComponent(trimmed)}'))
+            .timeout(const Duration(seconds: 10));
+        if (!mounted) return;
+
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data['success'] == true &&
+            data['sponsorFio'] != null &&
+            (data['sponsorFio'] as String).isNotEmpty) {
+          setState(() {
+            _isCheckingSponsor = false;
+            _sponsorFio = (data['sponsorFio'] as String).trim();
+            _sponsorError = null;
+          });
+        } else {
+          setState(() {
+            _isCheckingSponsor = false;
+            _sponsorFio = null;
+            _sponsorError = data['error'] ?? 'Данные не найдены';
+          });
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isCheckingSponsor = false;
+          _sponsorFio = null;
+          _sponsorError = 'Ошибка проверки спонсора';
+        });
+      }
+    });
   }
 
   Future<void> _reloadCaptcha() async {
@@ -314,6 +373,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'firstName': _firstNameController.text.trim(),
           'city': _cityController.text.trim(),
           'phone': _phoneController.text.trim(),
+          'sponsor': _sponsorController.text.trim(),
+          'sponsorFio': _sponsorFio ?? '',
           'ticket': (data['ticket'] ?? '').toString().trim(),
           'partnerId': partnerId,
           'registeredAt': DateTime.now().toIso8601String(),
@@ -389,6 +450,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _resetRegistration() {
+    _sponsorDebounce?.cancel();
     setState(() {
       _sessionId = null;
       _activeEmail = null;
@@ -399,6 +461,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _customEmailController.clear();
       _pinController.clear();
       _captchaController.clear();
+      _sponsorController.clear();
+      _sponsorFio = null;
+      _sponsorError = null;
+      _isCheckingSponsor = false;
       _isSubmitting = false;
     });
   }
@@ -614,6 +680,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final city = _savedUser!['city'] ?? '';
     final password = _savedUser!['password'] ?? '';
     final partnerId = (_savedUser!['partnerId'] ?? '').toString().trim();
+    final sponsorFio = (_savedUser!['sponsorFio'] ?? '').toString().trim();
+    final sponsorId = (_savedUser!['sponsor'] ?? '').toString().trim();
 
     return Card(
       elevation: 0,
@@ -716,6 +784,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (partnerId.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildInfoRow('ID партнера', partnerId, isCopyable: true),
+            ],
+            if (sponsorFio.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildInfoRow('Спонсор', sponsorFio),
+            ] else if (sponsorId.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildInfoRow('ID спонсора', sponsorId),
             ],
             const Divider(height: 32),
             Row(
@@ -957,7 +1032,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : const Icon(Icons.auto_mode_rounded, size: 18),
               label: Text(
                 _isInitializingAuto
-                    ? 'Ожидание кода: $_autoSecondsElapsed сек (до 2 мин)...'
+                    ? 'Ожидание кода: $_autoSecondsElapsed сек (до 3 мин)...'
                     : 'Сгенерировать временный e-mail (авто)',
               ),
               style: OutlinedButton.styleFrom(
@@ -968,7 +1043,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (_isInitializingAuto) ...[
               const SizedBox(height: 8),
               Text(
-                'Сервер ожидает письмо от НПК ИНФИНИТИ (обычно занимает 60–90 сек). Пожалуйста, не закрывайте страницу...',
+                'Сервер ожидает письмо от НПК ИНФИНИТИ (обычно занимает 60–120 сек). Пожалуйста, не закрывайте страницу...',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
               ),
@@ -1155,11 +1230,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               TextFormField(
                 controller: _sponsorController,
-                decoration: const InputDecoration(
+                onChanged: _onSponsorChanged,
+                decoration: InputDecoration(
                   labelText: 'ID / логин спонсора (необязательно)',
-                  prefixIcon: Icon(Icons.group_outlined),
+                  hintText: 'Например, 23316',
+                  prefixIcon: const Icon(Icons.group_outlined),
+                  suffixIcon: _isCheckingSponsor
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : (_sponsorController.text.trim().isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _sponsorController.clear();
+                                _onSponsorChanged('');
+                              },
+                            )
+                          : null),
                 ),
               ),
+              if (_isCheckingSponsor) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 1.5),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Поиск спонсора...',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (_sponsorFio != null && _sponsorFio!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Спонсор: $_sponsorFio',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (_sponsorError != null) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _sponsorError!,
+                          style: const TextStyle(fontSize: 12, color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
 
               // Блок капчи
