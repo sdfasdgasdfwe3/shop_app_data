@@ -116,7 +116,6 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _sponsorController.text = _cleanPartnerId;
     _generateRandomPassword();
     _checkVipStatus();
   }
@@ -290,8 +289,14 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     final phone = _phoneController.text.trim();
     final city = _cityController.text.trim();
     final password = _passwordController.text.trim();
-    final sponsor = _sponsorController.text.trim().isEmpty ? _cleanPartnerId : _sponsorController.text.trim();
+    final sponsor = _sponsorController.text.trim();
 
+    if (sponsor.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Укажите ID спонсора')),
+      );
+      return;
+    }
     if (lastName.isEmpty || firstName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Укажите фамилию и имя кандидата')),
@@ -611,7 +616,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
 
   Future<void> _openAdminPanel() async {
     if (!_isAdminUnlocked) {
-      final pinController = TextEditingController(text: '7777');
+      final pinController = TextEditingController();
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -627,32 +632,28 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Введите PIN-код администратора для просмотра заявок и управления доступом:', style: TextStyle(fontSize: 13)),
+              const Text('Введите пароль администратора для просмотра заявок и управления доступом:', style: TextStyle(fontSize: 13)),
               const SizedBox(height: 12),
               TextField(
                 controller: pinController,
-                keyboardType: TextInputType.number,
                 obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'PIN-код администратора',
-                  hintText: '7777',
+                  labelText: 'Пароль администратора',
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text('По умолчанию: 7777', style: TextStyle(fontSize: 11, color: Colors.grey)),
             ],
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
             ElevatedButton(
               onPressed: () {
-                if (pinController.text.trim() == '7777' || pinController.text.trim() == 'admin') {
+                if (pinController.text.trim() == 'alfred2002') {
                   Navigator.pop(ctx, true);
                 } else {
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(backgroundColor: Colors.red, content: Text('Неверный PIN-код')),
+                    const SnackBar(backgroundColor: Colors.red, content: Text('Неверный пароль')),
                   );
                 }
               },
