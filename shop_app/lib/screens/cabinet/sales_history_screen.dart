@@ -38,12 +38,14 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
     try {
       final ticket = widget.user['ticket'] ?? widget.user['partnersTicket'] ?? '';
       final guid = widget.user['partnersGuid'] ?? '';
-      final utckt = widget.user['usersTicket'] ?? '';
+      final utckt = widget.user['usersTicket'] ?? widget.user['utckt'] ?? '';
+      final login = widget.user['login'] ?? widget.user['email'] ?? widget.user['partnerId'] ?? '';
+      final password = widget.user['password'] ?? '';
 
       final url = Uri.parse(
-        '${widget.apiBaseUrl}/api/cabinet/orders?ticket=$ticket&guid=$guid&utckt=$utckt',
+        '${widget.apiBaseUrl}/api/cabinet/orders?ticket=$ticket&guid=$guid&utckt=$utckt&login=${Uri.encodeComponent(login)}&password=${Uri.encodeComponent(password)}',
       );
-      final res = await http.get(url).timeout(const Duration(seconds: 20));
+      final res = await http.get(url).timeout(const Duration(seconds: 25));
       final data = jsonDecode(utf8.decode(res.bodyBytes));
 
       if (data['success'] == true) {
@@ -155,12 +157,13 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
       itemCount: _orders.length,
       itemBuilder: (context, index) {
         final order = _orders[index];
-        final number = order['number'] ?? 'Заказ';
-        final date = order['date'] ?? '';
-        final warehouse = order['warehouse'] ?? '';
-        final sum = order['sum'] ?? '0 ₽';
-        final points = order['points'] ?? '0 ЛО';
-        final status = order['status'] ?? 'Выполнен';
+        final number = (order['number'] ?? order['invoiceNumber'] ?? order['orderNumber'] ?? order['id'] ?? 'Заказ').toString();
+        final date = (order['date'] ?? order['orderDate'] ?? order['saleDate'] ?? '').toString();
+        final warehouse = (order['warehouse'] ?? order['warehouseName'] ?? '').toString();
+        final sum = (order['sum'] ?? order['total'] ?? order['totalSum'] ?? '0 ₽').toString();
+        final points = (order['points'] ?? order['lop'] ?? '0 ЛО').toString();
+        final status = (order['status'] ?? order['state'] ?? 'Выполнен').toString();
+        final items = (order['items'] ?? order['products'] ?? '').toString();
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -220,12 +223,27 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        '$points',
+                        points,
                         style: TextStyle(color: Colors.blue.shade800, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ),
+                if (items.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      items,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
