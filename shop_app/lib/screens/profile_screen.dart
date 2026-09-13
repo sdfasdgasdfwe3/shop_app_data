@@ -1196,7 +1196,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.account_balance_wallet,
               title: 'Мои счета',
               subtitle: 'Баланс, лицевые счета и история операций',
-              webUrl: 'https://infinity-mlm.com/user/accounts',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1209,7 +1208,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.account_tree,
               title: 'Нижестоящие участники (Структура)',
               subtitle: 'Вся глубина команды, поиск, уровни и ЛО',
-              webUrl: 'https://infinity-mlm.com/user/reportdownline',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1222,7 +1220,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.group_add,
               title: 'Лично приглашенные',
               subtitle: 'Партнеры первой линии со связью по телефону и WhatsApp',
-              webUrl: 'https://infinity-mlm.com/user/reportpartnerpersonalinvited',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1235,7 +1232,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.supervisor_account,
               title: 'Вышестоящие участники (Спонсоры)',
               subtitle: 'Цепочка наставников вплоть до руководства компании',
-              webUrl: 'https://infinity-mlm.com/user/reportupline',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1248,7 +1244,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.emoji_events,
               title: 'Мои вознаграждения',
               subtitle: 'Начисления бонусов по расчетным периодам',
-              webUrl: 'https://infinity-mlm.com/user/reportbonus',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1261,7 +1256,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.shopping_bag_outlined,
               title: 'История заказов',
               subtitle: 'Накладные, баллы (ЛО), склады и статусы',
-              webUrl: 'https://infinity-mlm.com/user/saleshistory',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1274,7 +1268,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.badge_outlined,
               title: 'Изменение личных данных',
               subtitle: 'Редактирование ФИО, города и смена пароля',
-              webUrl: 'https://infinity-mlm.com/user/edit',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1372,7 +1365,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     String? subtitle,
     required VoidCallback onTap,
-    String? webUrl,
   }) {
     return InkWell(
       onTap: onTap,
@@ -1413,17 +1405,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            if (webUrl != null)
-              IconButton(
-                icon: const Icon(Icons.open_in_browser, size: 18, color: Colors.grey),
-                tooltip: 'Открыть на сайте',
-                onPressed: () async {
-                  final uri = Uri.parse(webUrl);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                },
-              ),
             Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400),
           ],
         ),
