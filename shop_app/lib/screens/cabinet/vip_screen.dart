@@ -25,7 +25,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   bool _hasPendingRequest = false;
   String? _errorMessage;
 
-  // Tabs: 0: Авто-регистрация, 1: Терминации, 2: Калькулятор
+  // Tabs: 0: Авто-регистрация, 1: Терминации
   late TabController _tabController;
 
   // ===================== АВТО-РЕГИСТРАЦИЯ =====================
@@ -56,67 +56,13 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   bool _onlyFirstLevel = false;
   bool _isAdminUnlocked = false;
 
-  // ===================== КАЛЬКУЛЯТОР =====================
-  double _calcLo = 1500;
-  double _calcGo = 50000;
-  String _selectedRank = 'Директор';
 
-  final List<Map<String, dynamic>> _ranks = [
-    {
-      'title': 'Консультант',
-      'minLo': 1000,
-      'minGo': 5000,
-      'bonusPercent': '5%',
-      'multiplier': 0.05,
-      'desc': 'Начальный ранг. Выплаты с 1-й линии.'
-    },
-    {
-      'title': 'Менеджер',
-      'minLo': 1500,
-      'minGo': 25000,
-      'bonusPercent': '8%',
-      'multiplier': 0.08,
-      'desc': 'Выплаты с 1-й и 2-й линий.'
-    },
-    {
-      'title': 'Директор',
-      'minLo': 2000,
-      'minGo': 70000,
-      'bonusPercent': '12%',
-      'multiplier': 0.12,
-      'desc': 'Директорский статус. Премия за руководство структурой.'
-    },
-    {
-      'title': 'Серебряный директор',
-      'minLo': 2500,
-      'minGo': 150000,
-      'bonusPercent': '15%',
-      'multiplier': 0.15,
-      'desc': 'Требуется минимум 1 директорская ветка в структуре.'
-    },
-    {
-      'title': 'Золотой директор',
-      'minLo': 3000,
-      'minGo': 300000,
-      'bonusPercent': '18%',
-      'multiplier': 0.18,
-      'desc': 'Требуется 2 директорские ветки в первом поколении.'
-    },
-    {
-      'title': 'Рубиновый директор',
-      'minLo': 4000,
-      'minGo': 600000,
-      'bonusPercent': '20%',
-      'multiplier': 0.20,
-      'desc': 'Высокий лидерский ранг с бонусом бесконечности.'
-    },
-  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _generateRandomPassword();
+    _tabController = TabController(length: 2, vsync: this);
+    _phoneController.text = '+7';
     _checkVipStatus();
   }
 
@@ -160,10 +106,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     return (widget.user['utckt'] ?? widget.user['usersTicket'] ?? '').toString().trim();
   }
 
-  void _generateRandomPassword() {
-    final rand = 100000 + (DateTime.now().microsecondsSinceEpoch % 900000);
-    _passwordController.text = 'Inf$rand';
-  }
+
 
   Future<void> _checkVipStatus() async {
     setState(() {
@@ -292,6 +235,12 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     final sponsor = _sponsorController.text.trim();
 
     if (sponsor.isEmpty) {
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Укажите пароль для входа')),
+      );
+      return;
+    }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Укажите ID спонсора')),
       );
@@ -350,9 +299,9 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
           _lastNameController.clear();
           _firstNameController.clear();
           _patronymicController.clear();
-          _phoneController.clear();
+          _phoneController.text = '+7';
           _cityController.clear();
-          _generateRandomPassword();
+          _passwordController.clear();
           // Sponsor ID remains as-is so subsequent registrations can be under the same sponsor
         });
 
@@ -1085,7 +1034,6 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             tabs: const [
               Tab(icon: Icon(Icons.person_add_alt_1_rounded), text: 'Авто-регистрация'),
               Tab(icon: Icon(Icons.warning_amber_rounded), text: 'Терминации'),
-              Tab(icon: Icon(Icons.calculate_outlined), text: 'Калькулятор'),
             ],
           ),
         ),
@@ -1097,7 +1045,6 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             children: [
               _buildAutoRegistrationTab(),
               _buildTerminationsTab(),
-              _buildCalculatorTab(),
             ],
           ),
         ),
@@ -1249,22 +1196,13 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Пароль для входа *',
+                      hintText: 'Введите пароль',
                       border: const OutlineInputBorder(),
                       isDense: true,
                       prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, size: 18),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.casino_outlined, size: 18),
-                            tooltip: 'Случайный пароль',
-                            onPressed: _generateRandomPassword,
-                          ),
-                        ],
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, size: 18),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                   ),
@@ -1862,124 +1800,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
       ),
     );
   }
-
-  // ===================== TAB 3: КАЛЬКУЛЯТОР =====================
-
-  Widget _buildCalculatorTab() {
-    final rankData = _ranks.firstWhere((r) => r['title'] == _selectedRank, orElse: () => _ranks[2]);
-    final multiplier = (rankData['multiplier'] as num).toDouble();
-    final estimatedIncome = (_calcGo * multiplier).round();
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Калькулятор дохода по маркетинг-плану',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Смоделируйте оборот структуры и рассчитайте прогнозируемый бонус.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-                const Divider(height: 24),
-
-                const Text('Целевая квалификация:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  value: _selectedRank,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                  items: _ranks.map((r) {
-                    return DropdownMenuItem<String>(
-                      value: r['title'] as String,
-                      child: Text(r['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _selectedRank = val);
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                Text(
-                  'Личный объем (ЛО): ${_calcLo.round()} баллов',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                Slider(
-                  value: _calcLo,
-                  min: 500,
-                  max: 10000,
-                  divisions: 19,
-                  label: '${_calcLo.round()} б.',
-                  activeColor: const Color(0xFF1E3A8A),
-                  onChanged: (val) => setState(() => _calcLo = val),
-                ),
-
-                Text(
-                  'Групповой объем структуры (ГО): ${_calcGo.round()} баллов',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                Slider(
-                  value: _calcGo,
-                  min: 5000,
-                  max: 1000000,
-                  divisions: 40,
-                  label: '${_calcGo.round()} б.',
-                  activeColor: const Color(0xFF1E3A8A),
-                  onChanged: (val) => setState(() => _calcGo = val),
-                ),
-
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'ПРОГНОЗИРУЕМЫЙ ЕЖЕМЕСЯЧНЫЙ ЧЕК:',
-                        style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '≈ ${estimatedIncome.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]} ')} ₽',
-                        style: const TextStyle(color: Colors.amberAccent, fontSize: 26, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Процент выплаты по рангу: ${rankData['bonusPercent']}',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
-
 
 class _AdminPanelModal extends StatefulWidget {
   final String apiBaseUrl;
