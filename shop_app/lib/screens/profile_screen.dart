@@ -6,6 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'cabinet/accounts_screen.dart';
+import 'cabinet/bonus_report_screen.dart';
+import 'cabinet/downline_screen.dart';
+import 'cabinet/invited_screen.dart';
+import 'cabinet/sales_history_screen.dart';
+import 'cabinet/upline_screen.dart';
+import 'cabinet/edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool showAppBar;
@@ -928,6 +935,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.blue),
+                  tooltip: 'Изменить личные данные',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => EditProfileScreen(
+                          user: _savedUser!,
+                          apiBaseUrl: apiBaseUrl,
+                          onProfileUpdated: () {
+                            _loadSavedUser();
+                            _refreshCabinetStats();
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
                   icon: _isRefreshingCabinet
                       ? const SizedBox(
                           width: 18,
@@ -1108,6 +1134,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'РЕКРУТЫ',
                     value: partnersCount,
                     subtitle: 'Разница: $partnersCountIncrease',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => DownlineScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1118,6 +1150,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'БОНУС',
                     value: bonus,
                     subtitle: 'Разница: $bonusIncrease',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => BonusReportScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1132,6 +1170,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'ЛО (ЛИЧНЫЙ ОБЪЕМ)',
                     value: lop,
                     subtitle: 'Разница: $lopIncrease',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => DownlineScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1142,6 +1186,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'ОСТАТОК',
                     value: stock,
                     subtitle: 'Счета и баланс',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => AccountsScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1150,12 +1200,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // 5. Personal account info
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(Icons.person_outline, size: 16, color: Colors.black87),
-                const SizedBox(width: 6),
-                const Text(
-                  'Данные профиля',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline, size: 16, color: Colors.black87),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Данные профиля',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.edit, size: 14),
+                  label: const Text('Изменить', style: TextStyle(fontSize: 12)),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => EditProfileScreen(
+                          user: _savedUser!,
+                          apiBaseUrl: apiBaseUrl,
+                          onProfileUpdated: () {
+                            _loadSavedUser();
+                            _refreshCabinetStats();
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -1178,52 +1252,114 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
             const Divider(height: 28),
 
-            // 6. Cabinet quick links
+            // 6. Native MLM Cabinet Sections
             Row(
               children: [
-                const Icon(Icons.open_in_new, size: 16, color: Colors.black87),
+                const Icon(Icons.apps, size: 18, color: Colors.blue),
                 const SizedBox(width: 6),
                 const Text(
-                  'Разделы кабинета на сайте',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  'Личный кабинет партнера',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             _buildCabinetQuickLink(
-              icon: Icons.dashboard,
-              title: 'Личный кабинет (Главная)',
-              url: 'https://infinity-mlm.com/user/myaccount',
-            ),
-            const SizedBox(height: 6),
-            _buildCabinetQuickLink(
-              icon: Icons.account_balance,
+              icon: Icons.account_balance_wallet,
               title: 'Мои счета',
-              url: 'https://infinity-mlm.com/user/accounts',
+              subtitle: 'Баланс, лицевые счета и история операций',
+              webUrl: 'https://infinity-mlm.com/user/accounts',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => AccountsScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                ),
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _buildCabinetQuickLink(
               icon: Icons.account_tree,
               title: 'Нижестоящие участники (Структура)',
-              url: 'https://infinity-mlm.com/user/reportdownline',
+              subtitle: 'Вся глубина команды, поиск, уровни и ЛО',
+              webUrl: 'https://infinity-mlm.com/user/reportdownline',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => DownlineScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                ),
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _buildCabinetQuickLink(
-              icon: Icons.people,
+              icon: Icons.group_add,
               title: 'Лично приглашенные',
-              url: 'https://infinity-mlm.com/user/reportpartnerpersonalinvited',
+              subtitle: 'Партнеры первой линии со связью по телефону и WhatsApp',
+              webUrl: 'https://infinity-mlm.com/user/reportpartnerpersonalinvited',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => InvitedScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                ),
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
+            _buildCabinetQuickLink(
+              icon: Icons.supervisor_account,
+              title: 'Вышестоящие участники (Спонсоры)',
+              subtitle: 'Цепочка наставников вплоть до руководства компании',
+              webUrl: 'https://infinity-mlm.com/user/reportupline',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => UplineScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             _buildCabinetQuickLink(
               icon: Icons.emoji_events,
               title: 'Мои вознаграждения',
-              url: 'https://infinity-mlm.com/user/reportbonus',
+              subtitle: 'Начисления бонусов по расчетным периодам',
+              webUrl: 'https://infinity-mlm.com/user/reportbonus',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => BonusReportScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                ),
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _buildCabinetQuickLink(
-              icon: Icons.history,
+              icon: Icons.shopping_bag_outlined,
               title: 'История заказов',
-              url: 'https://infinity-mlm.com/user/saleshistory',
+              subtitle: 'Накладные, баллы (ЛО), склады и статусы',
+              webUrl: 'https://infinity-mlm.com/user/saleshistory',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => SalesHistoryScreen(user: _savedUser!, apiBaseUrl: apiBaseUrl),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildCabinetQuickLink(
+              icon: Icons.badge_outlined,
+              title: 'Изменение личных данных',
+              subtitle: 'Редактирование ФИО, города и смена пароля',
+              webUrl: 'https://infinity-mlm.com/user/edit',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => EditProfileScreen(
+                    user: _savedUser!,
+                    apiBaseUrl: apiBaseUrl,
+                    onProfileUpdated: () {
+                      _loadSavedUser();
+                      _refreshCabinetStats();
+                    },
+                  ),
+                ),
+              ),
             ),
             const Divider(height: 28),
 
@@ -1247,8 +1383,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String value,
     required String subtitle,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
@@ -1269,6 +1406,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (onTap != null)
+                Icon(Icons.chevron_right, size: 14, color: color.withValues(alpha: 0.6)),
             ],
           ),
           const SizedBox(height: 6),
@@ -1289,38 +1428,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: content,
+      );
+    }
+    return content;
   }
 
   Widget _buildCabinetQuickLink({
     required IconData icon,
     required String title,
-    required String url,
+    String? subtitle,
+    required VoidCallback onTap,
+    String? webUrl,
   }) {
     return InkWell(
-      onTap: () async {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
-      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.15)),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: Colors.blue.shade700),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 20, color: Colors.blue.shade700),
+            ),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ],
               ),
             ),
+            if (webUrl != null)
+              IconButton(
+                icon: const Icon(Icons.open_in_browser, size: 18, color: Colors.grey),
+                tooltip: 'Открыть на сайте',
+                onPressed: () async {
+                  final uri = Uri.parse(webUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+              ),
             Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400),
           ],
         ),
