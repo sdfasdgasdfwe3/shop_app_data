@@ -14,4 +14,8 @@ key.properties
 # Игнорируем системные файлы
 Thumbs.db
 .DS_Store
+
+# Graphify generated graphs & cache
+graphify-out/
+
 
