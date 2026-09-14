@@ -44,7 +44,10 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   final _passwordController = TextEditingController();
   bool _obscurePassword = false;
   String _verifiedSponsorName = '';
+  String _verifiedSponsorId = '';
   bool _isVerifyingSponsor = false;
+  String? _sponsorError;
+  Timer? _sponsorDebounceTimer;
 
   // ===================== АНАЛИЗ ТЕРМИНАЦИЙ =====================
   bool _isLoadingTerminations = false;
@@ -63,12 +66,16 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _phoneController.text = '+7';
+    if (_cleanPartnerId.isNotEmpty) {
+      _sponsorController.text = _cleanPartnerId;
+    }
     _checkVipStatus();
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _sponsorDebounceTimer?.cancel();
     _tabController.dispose();
     _sponsorController.dispose();
     _lastNameController.dispose();
@@ -132,7 +139,12 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
           if (isVip) {
             _loadRegistrations();
             _loadTerminations();
-            _verifySponsor(_cleanPartnerId);
+            if (_sponsorController.text.trim().isEmpty && _cleanPartnerId.isNotEmpty) {
+              _sponsorController.text = _cleanPartnerId;
+            }
+            if (_sponsorController.text.trim().isNotEmpty) {
+              _verifySponsor(_sponsorController.text.trim());
+            }
           }
           return;
         }
@@ -153,32 +165,90 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   Future<void> _verifySponsor(String query) async {
     final clean = query.toLowerCase().replaceAll(RegExp(r'^(?:id|ид)[\s:#№-]*', caseSensitive: false), '').trim();
     if (clean.isEmpty) {
-      setState(() => _verifiedSponsorName = '');
+      if (mounted) {
+        setState(() {
+          _verifiedSponsorName = '';
+          _verifiedSponsorId = '';
+          _sponsorError = null;
+          _isVerifyingSponsor = false;
+        });
+      }
       return;
     }
-    setState(() => _isVerifyingSponsor = true);
+    if (mounted) {
+      setState(() {
+        _isVerifyingSponsor = true;
+        _sponsorError = null;
+      });
+    }
     try {
-      final res = await http.get(Uri.parse('${widget.apiBaseUrl}/api/sponsor?sponsor=${Uri.encodeComponent(clean)}'));
+      final res = await http.get(
+        Uri.parse('${widget.apiBaseUrl}/api/sponsor?sid=${Uri.encodeComponent(clean)}&sponsor=${Uri.encodeComponent(clean)}'),
+      ).timeout(const Duration(seconds: 10));
+
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
-        if (data['success'] == true && data['sponsorFio'] != null) {
-          setState(() {
-            _verifiedSponsorName = data['sponsorFio'].toString();
-            _isVerifyingSponsor = false;
-          });
+        if (data['success'] == true && data['sponsorFio'] != null && data['sponsorFio'].toString().trim().isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              _verifiedSponsorName = data['sponsorFio'].toString().trim();
+              _verifiedSponsorId = (data['sponsorId'] ?? clean).toString().trim();
+              _sponsorError = null;
+              _isVerifyingSponsor = false;
+            });
+          }
+          return;
+        } else {
+          if (mounted) {
+            setState(() {
+              _verifiedSponsorName = '';
+              _verifiedSponsorId = '';
+              _sponsorError = data['error'] ?? 'Спонсор с таким ID не найден в системе Инфинити';
+              _isVerifyingSponsor = false;
+            });
+          }
           return;
         }
       }
-      setState(() {
-        _verifiedSponsorName = '';
-        _isVerifyingSponsor = false;
-      });
+      if (mounted) {
+        setState(() {
+          _verifiedSponsorName = '';
+          _verifiedSponsorId = '';
+          _sponsorError = 'Ошибка проверки спонсора (код ${res.statusCode})';
+          _isVerifyingSponsor = false;
+        });
+      }
     } catch (_) {
+      if (mounted) {
+        setState(() {
+          _verifiedSponsorName = '';
+          _verifiedSponsorId = '';
+          _sponsorError = 'Не удалось проверить спонсора. Проверьте соединение с интернетом.';
+          _isVerifyingSponsor = false;
+        });
+      }
+    }
+  }
+
+  void _onSponsorChanged(String val) {
+    _sponsorDebounceTimer?.cancel();
+    final clean = val.toLowerCase().replaceAll(RegExp(r'^(?:id|ид)[\s:#№-]*', caseSensitive: false), '').trim();
+    if (clean.isEmpty) {
       setState(() {
         _verifiedSponsorName = '';
+        _verifiedSponsorId = '';
+        _sponsorError = null;
         _isVerifyingSponsor = false;
       });
+      return;
     }
+    setState(() {
+      _isVerifyingSponsor = true;
+      _sponsorError = null;
+    });
+    _sponsorDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _verifySponsor(val);
+    });
   }
 
   // ===================== АВТО-РЕГИСТРАЦИЯ МЕТОДЫ =====================
@@ -235,32 +305,50 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     final sponsor = _sponsorController.text.trim();
 
     if (sponsor.isEmpty) {
-    if (password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Укажите пароль для входа')),
+        const SnackBar(backgroundColor: Colors.red, content: Text('Укажите ID спонсора')),
       );
       return;
     }
+
+    if (_isVerifyingSponsor) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Укажите ID спонсора')),
+        const SnackBar(backgroundColor: Colors.orange, content: Text('Подождите завершения проверки спонсора...')),
       );
       return;
     }
+
+    if (_verifiedSponsorName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(_sponsorError ?? 'Спонсор не подтвержден. Проверьте правильность ID спонсора.'),
+        ),
+      );
+      return;
+    }
+
     if (lastName.isEmpty || firstName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Укажите фамилию и имя кандидата')),
+        const SnackBar(backgroundColor: Colors.red, content: Text('Укажите фамилию и имя кандидата')),
       );
       return;
     }
-    if (phone.isEmpty) {
+    if (phone.isEmpty || phone == '+7') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Укажите номер телефона')),
+        const SnackBar(backgroundColor: Colors.red, content: Text('Укажите номер телефона кандидата')),
       );
       return;
     }
     if (city.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Укажите город проживания')),
+        const SnackBar(backgroundColor: Colors.red, content: Text('Укажите город проживания кандидата')),
+      );
+      return;
+    }
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(backgroundColor: Colors.red, content: Text('Укажите пароль для входа кандидата')),
       );
       return;
     }
@@ -268,9 +356,10 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     setState(() => _isSubmitting = true);
 
     try {
+      final effectiveSponsor = _verifiedSponsorId.isNotEmpty ? _verifiedSponsorId : sponsor;
       final payload = {
         'vipPartnerId': _cleanPartnerId,
-        'sponsorId': sponsor,
+        'sponsorId': effectiveSponsor,
         'lastName': lastName,
         'firstName': firstName,
         'patronymic': patronymic,
@@ -1107,34 +1196,110 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'ID Спонсора *',
-                      hintText: _cleanPartnerId,
+                      hintText: _cleanPartnerId.isNotEmpty ? _cleanPartnerId : 'Введите ID спонсора',
                       border: const OutlineInputBorder(),
                       isDense: true,
                       prefixIcon: const Icon(Icons.badge_outlined, size: 20),
                       suffixIcon: _isVerifyingSponsor
-                          ? const Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
                           : IconButton(
                               icon: const Icon(Icons.search, size: 20),
+                              tooltip: 'Проверить спонсора',
                               onPressed: () => _verifySponsor(_sponsorController.text),
                             ),
                     ),
-                    onChanged: (val) {
-                      if (val.length >= 3) _verifySponsor(val);
-                    },
+                    onChanged: _onSponsorChanged,
                   ),
-                  if (_verifiedSponsorName.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.check_circle, color: Colors.green, size: 14),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            'Спонсор: $_verifiedSponsorName',
-                            style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w600),
+
+                  // Sponsor Verification Status
+                  if (_isVerifyingSponsor) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue.shade800),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Text(
+                            'Проверка спонсора на сайте Инфинити...',
+                            style: TextStyle(color: Colors.blue.shade900, fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (_verifiedSponsorName.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF86EFAC)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(Icons.verified_user_rounded, color: Color(0xFF16A34A), size: 18),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Спонсор подтвержден в системе Инфинити:',
+                                  style: TextStyle(color: Color(0xFF15803D), fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '$_verifiedSponsorName (ID: ${_verifiedSponsorId.isNotEmpty ? _verifiedSponsorId : _sponsorController.text.trim()})',
+                                  style: const TextStyle(color: Color(0xFF166534), fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (_sponsorError != null && _sponsorController.text.trim().isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFECACA)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _sponsorError!,
+                              style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -1310,6 +1475,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     final fio = (reg['fio'] ?? '').toString();
     final password = (reg['password'] ?? '').toString();
     final sponsor = (reg['sponsorId'] ?? '').toString();
+    final sponsorFio = (reg['sponsorFio'] ?? '').toString().trim();
     final phone = (reg['phone'] ?? '').toString();
     final city = (reg['city'] ?? '').toString();
     final expiresAt = reg['expiresAt'];
@@ -1504,7 +1670,20 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
               const SizedBox(height: 4),
             ],
 
-            Text('Спонсор: ID $sponsor', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            Row(
+              children: [
+                const Icon(Icons.verified_user_outlined, size: 14, color: Color(0xFF15803D)),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    sponsorFio.isNotEmpty
+                        ? 'Спонсор: $sponsorFio (ID: $sponsor)'
+                        : 'Спонсор: ID $sponsor',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF15803D)),
+                  ),
+                ),
+              ],
+            ),
             if (phone.isNotEmpty || city.isNotEmpty)
               Text('$city ${phone.isNotEmpty ? '• $phone' : ''}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
 
