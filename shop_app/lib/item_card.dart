@@ -60,11 +60,11 @@ class ItemCard extends StatelessWidget {
                 child: imageUrl.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: imageUrl,
-                        height: 135,
+                        height: 130,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => const SizedBox(
-                          height: 135,
+                          height: 130,
                           child: Center(
                             child: SizedBox(
                               width: 24,
@@ -74,7 +74,7 @@ class ItemCard extends StatelessWidget {
                           ),
                         ),
                         errorWidget: (context, url, error) => SizedBox(
-                          height: 135,
+                          height: 130,
                           child: Icon(
                             Icons.broken_image_outlined,
                             size: 40,
@@ -83,7 +83,7 @@ class ItemCard extends StatelessWidget {
                         ),
                       )
                     : SizedBox(
-                        height: 135,
+                        height: 130,
                         width: double.infinity,
                         child: Icon(
                           placeholderIcon,
@@ -118,7 +118,7 @@ class ItemCard extends StatelessWidget {
                       Text(
                         cleanDesc,
                         textAlign: TextAlign.center,
-                        maxLines: (cartQuantity != null || priceText != null) ? 2 : 4,
+                        maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 11.5,
