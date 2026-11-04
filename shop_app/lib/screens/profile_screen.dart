@@ -33,7 +33,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoadingUser = true;
 
   // Регистрационная сессия
+  // ignore: unused_field
   bool _isInitializingAuto = false;
+  // ignore: unused_field
   int _autoSecondsElapsed = 0;
   Timer? _autoTimer;
   bool _isSubmitting = false;
@@ -245,6 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // 3. Автоматическая генерация временной почты
+  // ignore: unused_element
   Future<void> _startAutoRegistration() async {
     _autoTimer?.cancel();
     setState(() {
@@ -554,9 +557,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 constraints: const BoxConstraints(maxWidth: 500),
                 child: _savedUser != null
                     ? _buildProfileCard()
-                    : _captchaBase64 != null
-                        ? _buildRegistrationForm()
-                        : _buildInitialCard(),
+                    : _buildLoginCard(),
               ),
             ),
           );
@@ -931,8 +932,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 26,
-                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                  child: const Icon(Icons.person, size: 30, color: Colors.blue),
+                  backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+                  child: const Icon(Icons.person, size: 28, color: Colors.white),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -945,23 +946,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.08),
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFFBFDBFE),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.workspace_premium, size: 14, color: Colors.blue.shade700),
+                            Icon(Icons.workspace_premium, size: 13, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8)),
                             const SizedBox(width: 4),
                             Text(
                               'Квалификация: $qualification',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.blue.shade800,
+                                color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8),
                               ),
                             ),
                           ],
@@ -1336,35 +1339,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     VoidCallback? onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final cardBg = Theme.of(context).cardColor;
+
     final content = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.12 : 0.06),
+        color: cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: isDark ? 0.35 : 0.2),
-          width: 1,
-        ),
+        border: Border.all(color: borderColor, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 14, color: color),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (onTap != null)
-                Icon(Icons.chevron_right, size: 14, color: color.withValues(alpha: 0.6)),
+                Icon(
+                  Icons.chevron_right,
+                  size: 14,
+                  color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -1372,8 +1397,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               value,
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : color.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
             ),
           ),
@@ -1382,7 +1407,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle,
             style: TextStyle(
               fontSize: 10,
-              color: isDark ? const Color(0xFFA1A1AA) : Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -1416,7 +1442,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0),
+            color: isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
@@ -1427,13 +1453,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: isDark
                     ? const Color(0xFF1E293B)
-                    : Colors.blue.withValues(alpha: 0.1),
+                    : const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
                 size: 20,
-                color: isDark ? const Color(0xFF60A5FA) : Colors.blue.shade700,
+                color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
               ),
             ),
             const SizedBox(width: 12),
@@ -1469,198 +1495,183 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInitialCard() {
+  Widget _buildLoginCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.15)),
+        side: BorderSide(color: borderColor, width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.account_circle, size: 48, color: Colors.blue),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Регистрация в НПК ИНФИНИТИ',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Создайте официальный партнерский аккаунт прямо из приложения.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.4),
-            ),
-            const SizedBox(height: 24),
-
-            if (_errorMessage != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red, fontSize: 13),
-                  textAlign: TextAlign.center,
+        child: Form(
+          key: _loginFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFEFF6FF),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                          : const Color(0xFFBFDBFE),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.lock_outline_rounded,
+                    size: 38,
+                    color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-            ],
-
-            // Кнопка регистрации
-            SizedBox(
-              height: 48,
-              child: FilledButton.icon(
-                icon: _isInitializingAuto
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.person_add_rounded, size: 20),
-                label: Text(
-                  _isInitializingAuto
-                      ? 'Ожидание кода: $_autoSecondsElapsed сек (до 3 мин)...'
-                      : 'Зарегистрироваться (автоматически)',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-                onPressed: (_isInitializingAuto || _isLoggingIn) ? null : _startAutoRegistration,
-              ),
-            ),
-            if (_isInitializingAuto) ...[
-              const SizedBox(height: 10),
               Text(
-                'Сервер ожидает код подтверждения от НПК ИНФИНИТИ (до 3 мин). Пожалуйста, не закрывайте страницу...',
+                'Вход в личный кабинет',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
               ),
-            ],
-
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Row(
-                children: [
-                  Expanded(child: Divider()),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('или войдите в существующий аккаунт', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 6),
+              Text(
+                'Авторизуйтесь, используя ID партнера, логин или E-mail и пароль.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              if (_loginErrorMessage != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
                   ),
-                  Expanded(child: Divider()),
-                ],
-              ),
-            ),
-
-            // Форма входа в аккаунт
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.2)),
-              ),
-              child: Form(
-                key: _loginFormKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.login_rounded, color: Colors.blue.shade700, size: 22),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Вход в аккаунт',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Для действующих партнеров и зарегистрированных пользователей.',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                    ),
-                    if (_loginErrorMessage != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                        ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
                         child: Text(
                           _loginErrorMessage!,
-                          style: const TextStyle(color: Colors.red, fontSize: 12),
-                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFFDC2626),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _loginUsernameController,
-                      decoration: InputDecoration(
-                        labelText: 'Логин, ID партнера или E-mail',
-                        hintText: 'Например, 23316 или user@mail.ru',
-                        prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      validator: (val) => (val == null || val.trim().isEmpty) ? 'Введите логин, ID или E-mail' : null,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _loginUsernameController,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: 'ID партнера, логин или E-mail',
+                  hintText: 'Например, 5318 или partner@mail.ru',
+                  prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                ),
+                validator: (val) => (val == null || val.trim().isEmpty)
+                    ? 'Введите логин, ID партнера или E-mail'
+                    : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _loginPasswordController,
+                obscureText: _loginObscurePassword,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: 'Пароль',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _loginObscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      size: 20,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _loginPasswordController,
-                      obscureText: _loginObscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Пароль',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_loginObscurePassword ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _loginObscurePassword = !_loginObscurePassword),
+                    onPressed: () => setState(() => _loginObscurePassword = !_loginObscurePassword),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                ),
+                validator: (val) => (val == null || val.trim().isEmpty) ? 'Введите пароль' : null,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 48,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isDark ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isLoggingIn ? null : _submitLogin,
+                  child: _isLoggingIn
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text(
+                          'Войти в личный кабинет',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                         ),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      validator: (val) => (val == null || val.trim().isEmpty) ? 'Введите пароль' : null,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.shield_outlined,
+                      size: 16,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                     ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 46,
-                      child: FilledButton(
-                        onPressed: _isLoggingIn ? null : _submitLogin,
-                        child: _isLoggingIn
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text('Войти в аккаунт', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Регистрация новых партнеров доступна в VIP-разделе для авторизованных пользователей с VIP-доступом.',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          height: 1.3,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
+  // ignore: unused_element
   Widget _buildRegistrationForm() {
     Uint8List? captchaBytes;
     if (_captchaBase64 != null) {

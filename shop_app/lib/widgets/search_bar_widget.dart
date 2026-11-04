@@ -15,9 +15,10 @@ class SearchBarWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0);
-    final focusColor = isDark ? const Color(0xFF3B82F6) : const Color(0xFF0F172A);
-    final mutedIconColor = isDark ? const Color(0xFF71717A) : const Color(0xFF94A3B8);
+    final borderColor = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final focusColor = isDark ? const Color(0xFF38BDF8) : const Color(0xFF2563EB);
+    final mutedIconColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final fillColor = isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -45,7 +46,7 @@ class SearchBarWidget extends StatelessWidget {
                     )
                   : null,
               filled: true,
-              fillColor: Theme.of(context).cardColor,
+              fillColor: fillColor,
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

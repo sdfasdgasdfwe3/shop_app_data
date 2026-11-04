@@ -72,36 +72,18 @@ class _CatalogTabState extends State<CatalogTab> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Row(
               children: [
-                ChoiceChip(
-                  label: const Text('Все'),
-                  selected: _selectedCategory == 'Все',
-                  selectedColor: Colors.blue,
-                  labelStyle: TextStyle(
-                    color: _selectedCategory == 'Все'
-                        ? Colors.white
-                        : Theme.of(context).textTheme.bodyMedium?.color,
-                  ),
-                  onSelected: (selected) {
-                    if (selected) setState(() => _selectedCategory = 'Все');
-                  },
+                _buildCategoryPill(
+                  label: 'Все',
+                  isSelected: _selectedCategory == 'Все',
+                  onTap: () => setState(() => _selectedCategory = 'Все'),
                 ),
                 ...widget.categories.map(
                   (category) => Padding(
                     padding: const EdgeInsets.only(left: 8.0),
-                    child: ChoiceChip(
-                      label: Text(category),
-                      selected: _selectedCategory == category,
-                      selectedColor: Colors.blue,
-                      labelStyle: TextStyle(
-                        color: _selectedCategory == category
-                            ? Colors.white
-                            : Theme.of(context).textTheme.bodyMedium?.color,
-                      ),
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() => _selectedCategory = category);
-                        }
-                      },
+                    child: _buildCategoryPill(
+                      label: category,
+                      isSelected: _selectedCategory == category,
+                      onTap: () => setState(() => _selectedCategory = category),
                     ),
                   ),
                 ),
@@ -176,6 +158,52 @@ class _CatalogTabState extends State<CatalogTab> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCategoryPill({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeBg = isDark ? const Color(0xFF2563EB) : const Color(0xFF0F172A);
+    final inactiveBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final inactiveText = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? activeBg : inactiveBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? activeBg : borderColor,
+            width: 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: (isDark ? const Color(0xFF2563EB) : const Color(0xFF0F172A)).withValues(alpha: 0.2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : inactiveText,
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -16,48 +16,67 @@ class SettingsBottomSheet {
       builder: (context) {
         bool currentHide = hidePricePoints;
         bool currentRetail = sendRetailPrice;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final borderColor = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+        final cardBg = isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Настройки',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                  // Drag Handle
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Card(
-                    elevation: 0,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey.shade900
-                        : Colors.grey.shade100,
-                    shape: RoundedRectangleBorder(
+                  const SizedBox(height: 18),
+                  Text(
+                    'Настройки',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor, width: 1),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SwitchListTile(
-                          title: const Text(
+                          title: Text(
                             'Отправлять без цены и баллов',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 16,
+                              fontSize: 14.5,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
                             ),
                           ),
-                          subtitle: const Text(
+                          subtitle: Text(
                             'Скрывать стоимость и баллы при отправке описания товара',
-                            style: TextStyle(fontSize: 13),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
                           ),
                           value: currentHide,
-                          activeThumbColor: Colors.green,
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF2563EB),
                           onChanged: (bool value) async {
                             setModalState(() {
                               currentHide = value;
@@ -73,21 +92,26 @@ class SettingsBottomSheet {
                             }
                           },
                         ),
-                        const Divider(height: 1, indent: 16, endIndent: 16),
+                        Divider(height: 1, indent: 16, endIndent: 16, color: borderColor),
                         SwitchListTile(
-                          title: const Text(
+                          title: Text(
                             'Отправлять с розничной ценой',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 16,
+                              fontSize: 14.5,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
                             ),
                           ),
-                          subtitle: const Text(
+                          subtitle: Text(
                             'При отправке указывать розничную цену вместо партнерской',
-                            style: TextStyle(fontSize: 13),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
                           ),
                           value: currentRetail,
-                          activeThumbColor: Colors.green,
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF2563EB),
                           onChanged: (bool value) async {
                             setModalState(() {
                               currentRetail = value;

@@ -31,18 +31,22 @@ class CartTab extends StatelessWidget {
     int currentQty,
   ) {
     final controller = TextEditingController(text: currentQty.toString());
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           isGift ? 'Количество в подарок' : 'Оплачиваемое количество',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
           autofocus: true,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             labelText: 'Введите количество',
           ),
         ),
@@ -53,8 +57,9 @@ class CartTab extends StatelessWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: isDark ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () {
               final val = int.tryParse(controller.text) ?? 0;
@@ -90,22 +95,27 @@ class CartTab extends StatelessWidget {
   ) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Оформление накладной'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Оформление накладной',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
               decoration: const InputDecoration(
-                labelText: 'ID номер (необязательно)',
+                labelText: 'ID номер или ФИО (необязательно)',
               ),
               textCapitalization: TextCapitalization.words,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             TextField(
               controller: phoneController,
               keyboardType: TextInputType.phone,
@@ -122,8 +132,9 @@ class CartTab extends StatelessWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
+              backgroundColor: isDark ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () {
               Navigator.pop(ctx);
@@ -135,7 +146,7 @@ class CartTab extends StatelessWidget {
                 phoneController.text.trim(),
               );
             },
-            child: const Text('Сохранить'),
+            child: const Text('Сохранить накладную'),
           ),
         ],
       ),
@@ -170,6 +181,7 @@ class CartTab extends StatelessWidget {
       'clientName': clientName,
       'clientPhone': clientPhone,
     };
+
     invoices.insert(0, newInvoice);
     await prefs.setString('saved_invoices', jsonEncode(invoices));
 
@@ -177,32 +189,63 @@ class CartTab extends StatelessWidget {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Накладная успешно сформирована!')),
+        const SnackBar(
+          content: Text('Накладная успешно сохранена!'),
+          backgroundColor: Color(0xFF10B981),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+
     if (cart.isEmpty && giftItems.isEmpty) {
       return Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Корзина пуста',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.shopping_bag_outlined,
+                size: 56,
+                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Ваша корзина пуста',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Добавьте товары из каталога',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                foregroundColor: Colors.white,
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: borderColor),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              icon: const Icon(Icons.receipt_long),
+              icon: const Icon(Icons.receipt_long, size: 18),
               label: const Text('Посмотреть мои накладные'),
               onPressed: () {
                 Navigator.push(
@@ -265,32 +308,30 @@ class CartTab extends StatelessWidget {
             ? product.retailPrice
             : product.price;
         totalPrice += currentPrice * paidQty;
+        totalPoints += product.points * paidQty;
+
         cartWidgets.add(
           Card(
             elevation: 0,
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
-              side: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF27272A)
-                    : const Color(0xFFE2E8F0),
-                width: 1,
-              ),
+              side: BorderSide(color: borderColor, width: 1),
             ),
             child: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: CachedNetworkImage(
                       imageUrl: "$repoUrl/images/${product.image}",
-                      width: 60,
-                      height: 60,
+                      width: 64,
+                      height: 64,
                       fit: BoxFit.cover,
                       errorWidget: (context, url, error) =>
-                          const Icon(Icons.broken_image),
+                          const Icon(Icons.broken_image_outlined),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -302,204 +343,188 @@ class CartTab extends StatelessWidget {
                           product.name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
                             fontSize: 14,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '$currentPrice ₽ x $paidQty = ${currentPrice * paidQty} ₽',
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8),
+                            fontWeight: FontWeight.w700,
                             fontSize: 13,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            InkWell(
-                              onTap: () {
-                                final newGifts =
-                                    Map<String, int>.from(giftItems);
-                                if (giftQty > 0) {
-                                  newGifts.remove(key);
-                                } else {
-                                  newGifts[key] = 1;
-                                }
-                                onCartChanged(cart, newGifts);
-                              },
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: Checkbox(
-                                      value: giftQty > 0,
-                                      onChanged: null,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  const Text(
-                                    'В подарок',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (giftQty > 0) ...[
-                              const SizedBox(height: 6),
-                              Container(
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(16),
+                        const SizedBox(height: 6),
+                        // Gift toggle
+                        InkWell(
+                          onTap: () {
+                            final newGifts = Map<String, int>.from(giftItems);
+                            if (giftQty > 0) {
+                              newGifts.remove(key);
+                            } else {
+                              newGifts[key] = 1;
+                            }
+                            onCartChanged(cart, newGifts);
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: Checkbox(
+                                  value: giftQty > 0,
+                                  activeColor: const Color(0xFF10B981),
+                                  onChanged: null,
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.remove,
-                                        size: 18,
-                                        color: Colors.green,
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 36,
-                                        minHeight: 36,
-                                      ),
-                                      onPressed: () {
-                                        final newGifts =
-                                            Map<String, int>.from(giftItems);
-                                        if (giftQty > 1) {
-                                          newGifts[key] = giftQty - 1;
-                                        } else {
-                                          newGifts.remove(key);
-                                        }
-                                        onCartChanged(cart, newGifts);
-                                      },
-                                    ),
-                                    GestureDetector(
-                                      onTap: () => _showQuantityDialog(
-                                        context,
-                                        key,
-                                        true,
-                                        giftQty,
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          '$giftQty',
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.green,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.add,
-                                        size: 18,
-                                        color: Colors.green,
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 36,
-                                        minHeight: 36,
-                                      ),
-                                      onPressed: () {
-                                        final newGifts =
-                                            Map<String, int>.from(giftItems);
-                                        newGifts[key] = giftQty + 1;
-                                        onCartChanged(cart, newGifts);
-                                      },
-                                    ),
-                                  ],
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'В подарок',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                 ),
                               ),
                             ],
-                          ],
+                          ),
                         ),
+                        if (giftQty > 0) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 32,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.remove,
+                                    size: 16,
+                                    color: Color(0xFF059669),
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                  onPressed: () {
+                                    final newGifts = Map<String, int>.from(giftItems);
+                                    if (giftQty > 1) {
+                                      newGifts[key] = giftQty - 1;
+                                    } else {
+                                      newGifts.remove(key);
+                                    }
+                                    onCartChanged(cart, newGifts);
+                                  },
+                                ),
+                                Text(
+                                  'Подарок: $giftQty',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF047857),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.add,
+                                    size: 16,
+                                    color: Color(0xFF059669),
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                  onPressed: () {
+                                    final newGifts = Map<String, int>.from(giftItems);
+                                    newGifts[key] = giftQty + 1;
+                                    onCartChanged(cart, newGifts);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.remove_circle_outline,
-                          color: paidQty > 0 ? Colors.red : Colors.grey,
-                        ),
-                        onPressed: paidQty > 0
-                            ? () {
-                                final newCart = Map<String, int>.from(cart);
-                                if (paidQty > 1) {
-                                  newCart[key] = paidQty - 1;
-                                } else {
-                                  newCart.remove(key);
+                  const SizedBox(width: 8),
+                  // Paid quantity stepper
+                  Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.remove,
+                            size: 16,
+                            color: paidQty > 0
+                                ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                                : (isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8)),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          onPressed: paidQty > 0
+                              ? () {
+                                  final newCart = Map<String, int>.from(cart);
+                                  if (paidQty > 1) {
+                                    newCart[key] = paidQty - 1;
+                                  } else {
+                                    newCart.remove(key);
+                                  }
+                                  onCartChanged(newCart, giftItems);
                                 }
-                                onCartChanged(newCart, giftItems);
-                              }
-                            : null,
-                      ),
-                      GestureDetector(
-                        onTap: () => _showQuantityDialog(
-                          context,
-                          key,
-                          false,
-                          paidQty,
+                              : null,
                         ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
+                        GestureDetector(
+                          onTap: () => _showQuantityDialog(
+                            context,
+                            key,
+                            false,
+                            paidQty,
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '$paidQty',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.blue,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              '$paidQty',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.add_circle_outline,
-                          color: Colors.green,
+                        IconButton(
+                          icon: Icon(
+                            Icons.add,
+                            size: 16,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          onPressed: () {
+                            final newCart = Map<String, int>.from(cart);
+                            newCart[key] = paidQty + 1;
+                            onCartChanged(newCart, giftItems);
+                          },
                         ),
-                        onPressed: () {
-                          final newCart = Map<String, int>.from(cart);
-                          newCart[key] = paidQty + 1;
-                          onCartChanged(newCart, giftItems);
-                        },
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -512,14 +537,14 @@ class CartTab extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.only(right: 16.0, top: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
           child: Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
-              icon: const Icon(Icons.delete_sweep, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
               label: const Text(
                 'Очистить корзину',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: Color(0xFFEF4444), fontSize: 13, fontWeight: FontWeight.w500),
               ),
               onPressed: () {
                 onCartChanged({}, {});
@@ -529,28 +554,21 @@ class CartTab extends StatelessWidget {
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.only(top: 8, bottom: 16),
+            padding: const EdgeInsets.only(top: 4, bottom: 16),
             children: cartWidgets,
           ),
         ),
         Container(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 130),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             border: Border(
-              top: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF27272A)
-                    : const Color(0xFFE2E8F0),
-                width: 1,
-              ),
+              top: BorderSide(color: borderColor, width: 1),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05,
-                ),
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                 blurRadius: 16,
                 offset: const Offset(0, -4),
               ),
@@ -563,18 +581,20 @@ class CartTab extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Итого:',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
                   ),
                   Text(
                     '$totalPrice ₽',
                     style: TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF60A5FA)
-                          : const Color(0xFF2563EB),
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8),
                     ),
                   ),
                 ],
@@ -583,38 +603,50 @@ class CartTab extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Всего баллов:',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
                   Text(
-                    '$totalPoints',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFF59E0B),
+                    'Всего баллов:',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                          : const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$totalPoints баллов',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFD97706),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               SizedBox(
                 height: 48,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF16A34A),
+                    backgroundColor: isDark ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  icon: const Icon(Icons.receipt_long, size: 20),
+                  icon: const Icon(Icons.receipt_long, size: 18),
                   onPressed: () =>
                       _showCreateInvoiceDialog(context, totalPrice, totalPoints),
                   label: const Text(
                     'Сформировать накладную',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

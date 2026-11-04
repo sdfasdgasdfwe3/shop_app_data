@@ -17,6 +17,7 @@ import 'screens/tabs/cart_tab.dart';
 import 'screens/tabs/catalog_tab.dart';
 import 'screens/tabs/promo_tab.dart';
 import 'screens/tabs/reviews_tab.dart';
+import 'theme.dart';
 import 'widgets/settings_bottom_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -91,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Ошибка проверки сохраненного логина: $e');
+      debugPrint('Ошибка проверки логина: $e');
     }
   }
 
@@ -220,12 +221,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             title: const Row(
               children: [
-                Icon(Icons.system_update, color: Colors.blue),
+                Icon(Icons.system_update, color: AppTheme.primary),
                 SizedBox(width: 8),
                 Text(
                   'Обновление',
                   style: TextStyle(
-                    color: Colors.blue,
+                    color: AppTheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -235,12 +236,15 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Вышла новая версия приложения! Пожалуйста, обновитесь для получения новых функций и стабильной работы.',
+                  'Доступна новая версия! Рекомендуем обновить приложение.',
                   style: TextStyle(fontSize: 16),
                 ),
                 if (isDownloading) ...[
                   const SizedBox(height: 20),
-                  LinearProgressIndicator(value: progress),
+                  LinearProgressIndicator(
+                    value: progress,
+                    color: AppTheme.primary,
+                  ),
                   const SizedBox(height: 8),
                   Text('${(progress * 100).toStringAsFixed(1)} %'),
                 ],
@@ -249,10 +253,6 @@ class _HomeScreenState extends State<HomeScreen> {
             actions: [
               if (!isDownloading)
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                  ),
                   onPressed: () async {
                     setState(() => isDownloading = true);
                     try {
@@ -288,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                    'Файл поврежден (сбой сети). Открываем в браузере...',
+                                    'Ошибка загрузки. Открываем браузер...',
                                   ),
                                 ),
                               );
@@ -316,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onError: (e) {
                           setState(() => isDownloading = false);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Ошибка скачивания')),
+                            const SnackBar(content: Text('Ошибка загрузки')),
                           );
                         },
                         cancelOnError: true,
@@ -325,12 +325,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() => isDownloading = false);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Ошибка сети')),
+                          const SnackBar(content: Text('Ошибка загрузки')),
                         );
                       }
                     }
                   },
-                  child: const Text('Скачать и установить'),
+                  child: const Text('Скачать обновление'),
                 ),
             ],
           );
@@ -349,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Удаление и обновление на GitHub...')),
+      const SnackBar(content: Text('Удаление на GitHub...')),
     );
 
     await dataManager.saveLocalUserData(userData);
@@ -363,10 +363,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (success) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Успешно удалено!')));
+      ).showSnackBar(const SnackBar(content: Text('Удалено!')));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка при удалении на сервере!')),
+        const SnackBar(content: Text('Ошибка удаления!')),
       );
     }
   }
@@ -387,7 +387,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBody() {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primary),
+      );
     }
 
     switch (_selectedIndex) {
@@ -452,6 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     int totalCartItems = _cart.values.fold(0, (sum, item) => sum + item) +
         _giftItems.values.fold(0, (sum, item) => sum + item);
 
@@ -463,25 +466,37 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
                 borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: isDark ? 0.4 : 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Icon(
                 Icons.all_inclusive,
-                color: Colors.blue,
-                size: 24,
+                color: Colors.white,
+                size: 20,
               ),
             ),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'INFINITY',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                letterSpacing: 1.5,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined, size: 20),
             onPressed: _openSettings,
           ),
           ValueListenableBuilder<ThemeMode>(
@@ -490,8 +505,9 @@ class _HomeScreenState extends State<HomeScreen> {
               return IconButton(
                 icon: Icon(
                   currentMode == ThemeMode.light
-                      ? Icons.dark_mode
-                      : Icons.light_mode,
+                      ? Icons.dark_mode_outlined
+                      : Icons.light_mode_outlined,
+                  size: 20,
                 ),
                 onPressed: () {
                   themeNotifier.value = currentMode == ThemeMode.light
@@ -501,136 +517,88 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
       body: _buildBody(),
       extendBody: true,
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 14),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF27272A)
-                    : const Color(0xFFE2E8F0),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.06,
-                  ),
-                  blurRadius: 18,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: BottomNavigationBar(
-                currentIndex: _selectedIndex,
-                onTap: (index) {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                },
-                backgroundColor: Theme.of(context).cardColor,
-                selectedItemColor: Theme.of(context).colorScheme.primary,
-                unselectedItemColor: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF71717A)
-                    : const Color(0xFF94A3B8),
-                showSelectedLabels: true,
-                showUnselectedLabels: false,
-                elevation: 0,
-                type: BottomNavigationBarType.fixed,
-                selectedFontSize: 12,
-                items: [
-                  const BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.shopping_bag_outlined),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.shopping_bag),
-                    ),
-                    label: 'Товары',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.article_outlined),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.article),
-                    ),
-                    label: 'Статьи',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.rate_review_outlined),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.rate_review),
-                    ),
-                    label: 'Отзывы',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: const EdgeInsets.only(bottom: 4, top: 8),
-                      child: Badge(
-                        backgroundColor: const Color(0xFFEF4444),
-                        textColor: Colors.white,
-                        isLabelVisible: totalCartItems > 0,
-                        label: Text('$totalCartItems'),
-                        child: const Icon(Icons.shopping_cart_outlined),
-                      ),
-                    ),
-                    activeIcon: Padding(
-                      padding: const EdgeInsets.only(bottom: 4, top: 8),
-                      child: Badge(
-                        backgroundColor: const Color(0xFFEF4444),
-                        textColor: Colors.white,
-                        isLabelVisible: totalCartItems > 0,
-                        label: Text('$totalCartItems'),
-                        child: const Icon(Icons.shopping_cart),
-                      ),
-                    ),
-                    label: 'Корзина',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.auto_awesome_outlined),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(Icons.auto_awesome),
-                    ),
-                    label: 'Именное',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: const EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(_isLoggedIn ? Icons.account_circle : Icons.person_outline),
-                    ),
-                    activeIcon: Padding(
-                      padding: const EdgeInsets.only(bottom: 4, top: 8),
-                      child: Icon(_isLoggedIn ? Icons.account_circle : Icons.person),
-                    ),
-                    label: 'Профиль',
-                  ),
-                ],
-              ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.cardDark : AppTheme.cardLight,
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
+              width: 1,
             ),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, -3),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          indicatorColor: isDark
+              ? const Color(0xFF38BDF8).withValues(alpha: 0.15)
+              : const Color(0xFF2563EB).withValues(alpha: 0.1),
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.shopping_bag_outlined),
+              selectedIcon: Icon(Icons.shopping_bag),
+              label: 'Каталог',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.article_outlined),
+              selectedIcon: Icon(Icons.article),
+              label: 'Статьи',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.star_outline_rounded),
+              selectedIcon: Icon(Icons.star_rounded),
+              label: 'Отзывы',
+            ),
+            NavigationDestination(
+              icon: Badge(
+                backgroundColor: AppTheme.error,
+                textColor: Colors.white,
+                isLabelVisible: totalCartItems > 0,
+                label: Text('$totalCartItems'),
+                child: const Icon(Icons.shopping_cart_outlined),
+              ),
+              selectedIcon: Badge(
+                backgroundColor: AppTheme.error,
+                textColor: Colors.white,
+                isLabelVisible: totalCartItems > 0,
+                label: Text('$totalCartItems'),
+                child: const Icon(Icons.shopping_cart),
+              ),
+              label: 'Корзина',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.auto_awesome_outlined),
+              selectedIcon: Icon(Icons.auto_awesome),
+              label: 'Акции',
+            ),
+            NavigationDestination(
+              icon: Icon(
+                _isLoggedIn ? Icons.account_circle_outlined : Icons.person_outline,
+              ),
+              selectedIcon: Icon(
+                _isLoggedIn ? Icons.account_circle : Icons.person,
+              ),
+              label: 'Профиль',
+            ),
+          ],
         ),
       ),
     );
