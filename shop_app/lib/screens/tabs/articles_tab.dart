@@ -117,7 +117,7 @@ class _ArticlesTabState extends State<ArticlesTab> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio: 0.62,
+                      childAspectRatio: 0.54,
                     ),
                     itemCount: filteredArticles.length,
                     itemBuilder: (context, index) {

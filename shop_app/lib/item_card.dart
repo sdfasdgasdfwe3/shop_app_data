@@ -32,6 +32,7 @@ class ItemCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
     final cardBg = Theme.of(context).cardColor;
+    final cleanDesc = description.replaceAll(RegExp(r'\s+'), ' ').trim();
 
     return GestureDetector(
       onTap: onTap,
@@ -59,11 +60,11 @@ class ItemCard extends StatelessWidget {
                 child: imageUrl.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: imageUrl,
-                        height: 145,
+                        height: 135,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => const SizedBox(
-                          height: 145,
+                          height: 135,
                           child: Center(
                             child: SizedBox(
                               width: 24,
@@ -73,7 +74,7 @@ class ItemCard extends StatelessWidget {
                           ),
                         ),
                         errorWidget: (context, url, error) => SizedBox(
-                          height: 145,
+                          height: 135,
                           child: Icon(
                             Icons.broken_image_outlined,
                             size: 40,
@@ -82,7 +83,7 @@ class ItemCard extends StatelessWidget {
                         ),
                       )
                     : SizedBox(
-                        height: 145,
+                        height: 135,
                         width: double.infinity,
                         child: Icon(
                           placeholderIcon,
@@ -95,7 +96,7 @@ class ItemCard extends StatelessWidget {
             // Card Content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(10.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -106,22 +107,22 @@ class ItemCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                         height: 1.25,
                         color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
                       ),
                     ),
-                    if (description.trim().isNotEmpty) ...[
-                      const SizedBox(height: 5),
+                    if (cleanDesc.isNotEmpty) ...[
+                      const SizedBox(height: 4),
                       Text(
-                        description.trim(),
+                        cleanDesc,
                         textAlign: TextAlign.center,
                         maxLines: (cartQuantity != null || priceText != null) ? 2 : 4,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 11.5,
-                          height: 1.3,
+                          height: 1.25,
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         ),
                       ),
@@ -130,7 +131,7 @@ class ItemCard extends StatelessWidget {
 
                     // Price & Points Badges
                     if (priceText != null || pointsText != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.center,
@@ -189,9 +190,33 @@ class ItemCard extends StatelessWidget {
                       ),
                     ],
 
+                    // Read more button for articles / reviews (when no cart or price)
+                    if (cartQuantity == null && priceText == null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Подробнее',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 13,
+                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                          ),
+                        ],
+                      ),
+                    ],
+
                     // Cart Buttons
                     if (cartQuantity != null) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       cartQuantity! > 0
                           ? Container(
                               height: 38,

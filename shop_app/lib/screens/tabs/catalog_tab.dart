@@ -156,7 +156,7 @@ class _CatalogTabState extends State<CatalogTab> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio: 0.49,
+                      childAspectRatio: 0.47,
                     ),
                     itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
