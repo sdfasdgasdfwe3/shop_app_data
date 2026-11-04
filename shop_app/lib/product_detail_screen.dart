@@ -432,66 +432,68 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildBadges(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (_sendRetailPrice) {
       final int retailPrice = widget.product.retailPrice > 0
           ? widget.product.retailPrice
           : widget.product.price;
       return Wrap(
         alignment: WrapAlignment.center,
-        spacing: 12,
-        runSpacing: 12,
+        spacing: 10,
+        runSpacing: 10,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.teal.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
+              color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.teal.withValues(alpha: 0.3),
-                width: 1.5,
+                color: isDark ? const Color(0xFF10B981).withValues(alpha: 0.35) : const Color(0xFFA7F3D0),
+                width: 1,
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.local_offer_outlined,
-                  color: Colors.teal,
-                  size: 20,
+                  color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
+                  size: 18,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
                   '$retailPrice ₽',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
                   ),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(16),
+              color: isDark ? const Color(0xFF451A03).withValues(alpha: 0.35) : const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.orange.withValues(alpha: 0.2),
-                width: 1.5,
+                color: isDark ? const Color(0xFFF59E0B).withValues(alpha: 0.35) : const Color(0xFFFDE68A),
+                width: 1,
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.stars_rounded, color: Colors.orange, size: 20),
-                const SizedBox(width: 8),
+                Icon(Icons.stars_rounded, color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706), size: 18),
+                const SizedBox(width: 6),
                 Text(
                   '${widget.product.points} баллов',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange.shade800,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
                   ),
                 ),
               ],
@@ -503,31 +505,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     return Wrap(
       alignment: WrapAlignment.center,
-      spacing: 12,
-      runSpacing: 12,
+      spacing: 10,
+      runSpacing: 10,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.blue.withValues(alpha: 0.2), width: 1.5),
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFFBFDBFE),
+              width: 1,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.local_offer_outlined,
-                color: Colors.blue,
-                size: 20,
+                color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8),
+                size: 18,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
                 '${widget.product.price} ₽ (партнер)',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8),
                 ),
               ),
             ],
@@ -535,53 +540,56 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         if (widget.product.retailPrice > 0)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.teal.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.teal.withValues(alpha: 0.2), width: 1.5),
+              color: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? const Color(0xFF10B981).withValues(alpha: 0.35) : const Color(0xFFA7F3D0),
+                width: 1,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.storefront_outlined,
-                  color: Colors.teal,
-                  size: 20,
+                  color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
+                  size: 18,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
                   '${widget.product.retailPrice} ₽ (розница)',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
                   ),
                 ),
               ],
             ),
           ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
+            color: isDark ? const Color(0xFF451A03).withValues(alpha: 0.35) : const Color(0xFFFEF3C7),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.orange.withValues(alpha: 0.2),
-              width: 1.5,
+              color: isDark ? const Color(0xFFF59E0B).withValues(alpha: 0.35) : const Color(0xFFFDE68A),
+              width: 1,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.stars_rounded, color: Colors.orange, size: 20),
-              const SizedBox(width: 8),
+              Icon(Icons.stars_rounded, color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706), size: 18),
+              const SizedBox(width: 6),
               Text(
                 '${widget.product.points} баллов',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade800,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
                 ),
               ),
             ],
@@ -785,42 +793,43 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget _buildBottomBar(BuildContext context) {
     final int qty = widget.getCartQuantity(widget.product.id);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final cardBg = Theme.of(context).cardColor;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        24,
-        12,
-        24,
-        12 + MediaQuery.of(context).padding.bottom,
+        20,
+        14,
+        20,
+        14 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: cardBg,
+        border: Border(top: BorderSide(color: borderColor, width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
         ],
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Row(
         children: [
           if (qty > 0) ...[
             Container(
-              height: 54,
+              height: 48,
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(27),
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.blue.withValues(alpha: 0.2),
-                  width: 1.5,
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                 ),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.remove, color: Colors.blue),
+                    icon: Icon(Icons.remove, size: 18, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                     onPressed: () {
                       widget.onDecrement(widget.product.id);
                       setState(() {});
@@ -830,16 +839,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     constraints: const BoxConstraints(minWidth: 32),
                     alignment: Alignment.center,
                     child: Text(
-                      '$qty',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                      '',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add, color: Colors.blue),
+                    icon: Icon(Icons.add, size: 18, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                     onPressed: () {
                       widget.onIncrement(widget.product.id);
                       setState(() {});
@@ -848,23 +857,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: SizedBox(
-                height: 54,
+                height: 48,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: const Color(0xFF10B981),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(27),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 2,
+                    elevation: 0,
                   ),
-                  icon: const Icon(Icons.shopping_cart),
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
                   label: const Text(
                     'В корзине',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -880,20 +889,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ] else ...[
             Expanded(
               child: SizedBox(
-                height: 54,
+                height: 48,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: isDark ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(27),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 4,
+                    elevation: 0,
                   ),
-                  icon: const Icon(Icons.add_shopping_cart),
+                  icon: const Icon(Icons.add_shopping_cart, size: 18),
                   label: const Text(
                     'Добавить в корзину',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                   onPressed: () {
                     widget.onIncrement(widget.product.id);

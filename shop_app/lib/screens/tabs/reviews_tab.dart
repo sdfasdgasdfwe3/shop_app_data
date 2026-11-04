@@ -56,14 +56,52 @@ class _ReviewsTabState extends State<ReviewsTab> {
             onRefresh: widget.onRefresh,
             child: filteredReviews.isEmpty
                 ? ListView(
-                    children: const [
+                    children: [
                       Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Center(
-                          child: Text(
-                            'Отзывы не найдены',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 80),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? const Color(0xFF1E293B)
+                                    : const Color(0xFFF1F5F9),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.rate_review_outlined,
+                                size: 32,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Отзывы не найдены',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Попробуйте ввести другой поисковый запрос',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -79,7 +117,7 @@ class _ReviewsTabState extends State<ReviewsTab> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio: 0.65,
+                      childAspectRatio: 0.62,
                     ),
                     itemCount: filteredReviews.length,
                     itemBuilder: (context, index) {

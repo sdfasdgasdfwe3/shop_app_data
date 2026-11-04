@@ -59,11 +59,11 @@ class ItemCard extends StatelessWidget {
                 child: imageUrl.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: imageUrl,
-                        height: 160,
+                        height: 145,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => const SizedBox(
-                          height: 160,
+                          height: 145,
                           child: Center(
                             child: SizedBox(
                               width: 24,
@@ -73,7 +73,7 @@ class ItemCard extends StatelessWidget {
                           ),
                         ),
                         errorWidget: (context, url, error) => SizedBox(
-                          height: 160,
+                          height: 145,
                           child: Icon(
                             Icons.broken_image_outlined,
                             size: 40,
@@ -82,7 +82,7 @@ class ItemCard extends StatelessWidget {
                         ),
                       )
                     : SizedBox(
-                        height: 160,
+                        height: 145,
                         width: double.infinity,
                         child: Icon(
                           placeholderIcon,
@@ -106,12 +106,26 @@ class ItemCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 14.5,
+                        fontSize: 14.0,
                         fontWeight: FontWeight.w700,
                         height: 1.25,
                         color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
                       ),
                     ),
+                    if (description.trim().isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        description.trim(),
+                        textAlign: TextAlign.center,
+                        maxLines: (cartQuantity != null || priceText != null) ? 2 : 4,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1.3,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
                     const Spacer(),
 
                     // Price & Points Badges
