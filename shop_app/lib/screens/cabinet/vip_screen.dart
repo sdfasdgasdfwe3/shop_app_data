@@ -921,18 +921,154 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                     ),
                   ],
                 ),
+                const SizedBox(height: 14),
+
+                // Requisites Card
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFFF59E0B).withValues(alpha: 0.3) : const Color(0xFFFDE68A),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.account_balance_wallet_outlined, size: 18, color: Colors.amber.shade700),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Реквизиты для оплаты:',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            'Банк: ',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                          Text(
+                            'Тинькофф (Т-Банк)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Номер: ',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                ),
+                              ),
+                              Text(
+                                '+7 995 910-91-77',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                  color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8),
+                                ),
+                              ),
+                            ],
+                          ),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(const ClipboardData(text: '79959109177'));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Номер 79959109177 скопирован в буфер обмена'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.copy_rounded, size: 14, color: isDark ? Colors.white70 : const Color(0xFF334155)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Скопировать',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            'Сумма: ',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                          const Text(
+                            '1 000 руб (на 1 месяц)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF10B981),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 _buildInstructionStep(
                   step: '1',
                   title: 'Перевод 1 000 руб на 1 месяц',
-                  description: 'Для получения VIP доступа необходимо перевести 1000 руб на 1 месяц.',
+                  description: 'Переведите 1 000 руб в банк Тинькофф по номеру +7 995 910-91-77.',
                   isDark: isDark,
                 ),
                 const SizedBox(height: 12),
                 _buildInstructionStep(
                   step: '2',
                   title: 'Отправьте запрос на получение доступа',
-                  description: 'Нажмите кнопку ниже и отправьте запрос администратору.',
+                  description: 'Нажмите кнопку ниже и заполните форму запроса.',
                   isDark: isDark,
                 ),
                 const SizedBox(height: 12),
@@ -968,7 +1104,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Администратор сверяет платеж (1000 руб / 1 мес). VIP-доступ откроется сразу после подтверждения.',
+                          'Администратор сверяет платеж (1000 руб / 1 мес на Тинькофф). VIP-доступ откроется сразу после подтверждения.',
                           style: TextStyle(fontSize: 12, color: Color(0xFFB45309)),
                         ),
                       ],
@@ -1065,8 +1201,8 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   Future<void> _openRequestDialog() async {
     final commentController = TextEditingController(
       text: _partnerFio.isNotEmpty
-          ? 'Оплата 1000 руб на 1 месяц. Платеж от: $_partnerFio'
-          : 'Оплата 1000 руб на 1 месяц. Платеж от: ',
+          ? 'Оплата 1000 руб на Тинькофф (1 месяц). Платеж от: $_partnerFio'
+          : 'Оплата 1000 руб на Тинькофф (1 месяц). Платеж от: ',
     );
     final fioController = TextEditingController(text: _partnerFio);
     final phoneController = TextEditingController(text: _partnerPhone);
@@ -1121,20 +1257,32 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.amber.shade300),
                       ),
-                      child: Row(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.info_outline_rounded, color: Colors.amber.shade900, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Для получения VIP доступа переведите 1000 руб на 1 месяц и отправьте запрос. В поле комментария обязательно укажите, от кого поступил платеж.',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                color: Colors.amber.shade900,
-                                fontWeight: FontWeight.w500,
-                                height: 1.35,
+                          Row(
+                            children: [
+                              Icon(Icons.account_balance_wallet_outlined, color: Colors.amber.shade900, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Оплата: Тинькофф по номеру 79959109177',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Сумма: 1 000 руб на 1 месяц. В поле комментария ниже обязательно укажите, от кого платеж (ФИО или данные чека).',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.amber.shade900,
+                              height: 1.35,
                             ),
                           ),
                         ],
