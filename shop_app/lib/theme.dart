@@ -36,6 +36,51 @@ class AppTheme {
   static const Color borderLight = Color(0xFFE2E8F0); // Slate 200 hairline border
   static const Color borderDark  = Color(0xFF1F2937); // Gray 800 / Slate 800
 
+  // ── Shape & Radii Design Tokens ──────────────────────────────────────────────
+  static const double radiusSm   = 8.0;   // Chips, badges, small buttons
+  static const double radiusMd   = 12.0;  // Input fields, standard buttons, steppers
+  static const double radiusLg   = 16.0;  // Product cards, containers, dialogs
+  static const double radiusXl   = 24.0;  // Bottom sheets, large modals
+  static const double radiusPill = 999.0; // Category pills, status pills
+
+  static final BorderRadius roundedSm   = BorderRadius.circular(radiusSm);
+  static final BorderRadius roundedMd   = BorderRadius.circular(radiusMd);
+  static final BorderRadius roundedLg   = BorderRadius.circular(radiusLg);
+  static final BorderRadius roundedXl   = BorderRadius.circular(radiusXl);
+  static final BorderRadius roundedPill = BorderRadius.circular(radiusPill);
+
+  // ── Surface & Border Helpers ────────────────────────────────────────────────
+  static Color getBorderColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? borderDark : borderLight;
+
+  static Color getCardColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? cardDark : cardLight;
+
+  static Color getMutedSurfaceColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? surfaceMutedDark : surfaceMutedLight;
+
+  static Color getTextPrimary(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? textPrimaryDark : textPrimaryLight;
+
+  static Color getTextSecondary(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? textSecondaryDark : textSecondaryLight;
+
+  static BoxDecoration cardDecoration(BuildContext context, {double? radius}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BoxDecoration(
+      color: isDark ? cardDark : cardLight,
+      borderRadius: BorderRadius.circular(radius ?? radiusLg),
+      border: Border.all(color: isDark ? borderDark : borderLight, width: 1.0),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    );
+  }
+
   // ── Gradient helpers (Sophisticated Deep Sapphire Shimmer) ──────────────────
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
