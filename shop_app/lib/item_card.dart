@@ -63,6 +63,10 @@ class ItemCard extends StatelessWidget {
                         height: 130,
                         width: double.infinity,
                         fit: BoxFit.cover,
+                        memCacheWidth: 350,
+                        memCacheHeight: 350,
+                        maxWidthDiskCache: 600,
+                        maxHeightDiskCache: 600,
                         placeholder: (context, url) => const SizedBox(
                           height: 130,
                           child: Center(

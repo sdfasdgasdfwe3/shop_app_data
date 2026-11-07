@@ -38,11 +38,15 @@ class _ArticlesTabState extends State<ArticlesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+    final isQueryEmpty = query.isEmpty;
     var allArticles = [...widget.userArticles, ...widget.appArticles];
-    var filteredArticles = allArticles.where((a) {
-      return a.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          a.content.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+    var filteredArticles = isQueryEmpty
+        ? allArticles
+        : allArticles.where((a) {
+            return a.title.toLowerCase().contains(query) ||
+                a.content.toLowerCase().contains(query);
+          }).toList();
 
     return Column(
       children: [

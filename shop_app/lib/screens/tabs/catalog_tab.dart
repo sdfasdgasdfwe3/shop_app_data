@@ -49,13 +49,16 @@ class _CatalogTabState extends State<CatalogTab> {
         ? widget.shuffledProducts
         : widget.products;
 
+    final query = _searchQuery.trim().toLowerCase();
+    final isQueryEmpty = query.isEmpty;
+
     var filteredProducts = sourceList.where((p) {
-      final matchesCategory =
-          _selectedCategory == 'Все' || p.category == _selectedCategory;
-      final matchesSearch =
-          p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
+      if (_selectedCategory != 'Все' && p.category != _selectedCategory) {
+        return false;
+      }
+      if (isQueryEmpty) return true;
+      return p.name.toLowerCase().contains(query) ||
+             p.description.toLowerCase().contains(query);
     }).toList();
 
     return Column(

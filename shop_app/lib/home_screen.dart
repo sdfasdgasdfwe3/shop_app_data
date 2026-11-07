@@ -392,9 +392,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    switch (_selectedIndex) {
-      case 0:
-        return CatalogTab(
+    return IndexedStack(
+      index: _selectedIndex,
+      children: [
+        CatalogTab(
           products: appData.products,
           shuffledProducts: _shuffledProducts,
           categories: appData.categories,
@@ -404,27 +405,24 @@ class _HomeScreenState extends State<HomeScreen> {
           onAddToCart: _addToCart,
           onRemoveFromCart: _removeFromCart,
           onRefresh: () => _loadData(refresh: true),
-        );
-      case 1:
-        return ArticlesTab(
+        ),
+        ArticlesTab(
           appArticles: appData.articles,
           userArticles: userData.articles,
           repoUrl: dataManager.repoUrl,
           isLoggedIn: _isLoggedIn,
           onDeleteArticle: (article) => _deleteContent(article, true),
           onRefresh: () => _loadData(refresh: true),
-        );
-      case 2:
-        return ReviewsTab(
+        ),
+        ReviewsTab(
           appReviews: appData.reviews,
           userReviews: userData.reviews,
           repoUrl: dataManager.repoUrl,
           isLoggedIn: _isLoggedIn,
           onDeleteReview: (review) => _deleteContent(review, false),
           onRefresh: () => _loadData(refresh: true),
-        );
-      case 3:
-        return CartTab(
+        ),
+        CartTab(
           appData: appData,
           cart: _cart,
           giftItems: _giftItems,
@@ -437,19 +435,17 @@ class _HomeScreenState extends State<HomeScreen> {
             });
             _saveCart();
           },
-        );
-      case 4:
-        return PromoTab(
+        ),
+        PromoTab(
           appData: appData,
           repoUrl: dataManager.repoUrl,
-        );
-      case 5:
-      default:
-        return ProfileScreen(
+        ),
+        ProfileScreen(
           showAppBar: false,
           onLoginStateChanged: _checkSavedLogin,
-        );
-    }
+        ),
+      ],
+    );
   }
 
   @override

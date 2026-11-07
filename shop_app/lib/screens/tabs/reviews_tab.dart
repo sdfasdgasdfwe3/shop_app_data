@@ -38,11 +38,15 @@ class _ReviewsTabState extends State<ReviewsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+    final isQueryEmpty = query.isEmpty;
     var allReviews = [...widget.userReviews, ...widget.appReviews];
-    var filteredReviews = allReviews.where((r) {
-      return r.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          r.content.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+    var filteredReviews = isQueryEmpty
+        ? allReviews
+        : allReviews.where((r) {
+            return r.title.toLowerCase().contains(query) ||
+                r.content.toLowerCase().contains(query);
+          }).toList();
 
     return Column(
       children: [

@@ -31,19 +31,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       "https://raw.githubusercontent.com/sdfasdgasdfwe3/shop_app_data/main/images/";
 
   late ScrollController _scrollController;
-  double _scrollOffset = 0.0;
   bool _hidePricePoints = false;
   bool _sendRetailPrice = false;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController()
-      ..addListener(() {
-        setState(() {
-          _scrollOffset = _scrollController.offset;
-        });
-      });
+    _scrollController = ScrollController();
     _loadSettings();
   }
 
@@ -341,7 +335,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
 
   Widget _buildAppBar(BuildContext context, String imageUrl, String shareText) {
-    final double opacity = (_scrollOffset / 180.0).clamp(0.0, 1.0);
+    return AnimatedBuilder(
+      animation: _scrollController,
+      builder: (context, _) {
+        final double offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+        final double opacity = (offset / 180.0).clamp(0.0, 1.0);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final appBarBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
@@ -428,6 +426,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 
