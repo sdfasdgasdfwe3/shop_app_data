@@ -992,11 +992,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     child: CachedNetworkImage(
                       imageUrl: imageUrl,
                       width: double.infinity,
-                      height: 380,
+                      height: 320,
                       fit: BoxFit.cover,
                       placeholder:
                           (context, url) => Container(
-                            height: 380,
+                            height: 320,
                             color: Colors.grey.shade100,
                             child: const Center(
                               child: CircularProgressIndicator(),
@@ -1004,7 +1004,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                       errorWidget:
                           (context, url, error) => Container(
-                            height: 380,
+                            height: 320,
                             color: Colors.grey.shade100,
                             child: const Icon(
                               Icons.broken_image,

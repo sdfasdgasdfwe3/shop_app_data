@@ -139,7 +139,7 @@ class _ReviewsTabState extends State<ReviewsTab> {
                               builder: (context) => ContentDetailScreen(
                                 item: review,
                                 pageTitle: 'Отзыв',
-                                shareEmoji: '💬',
+                                shareEmoji: '',
                                 canDelete: widget.isLoggedIn && isUserAdded,
                                 onDelete: () => widget.onDeleteReview(review),
                               ),
