@@ -790,6 +790,8 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   }
 
   Widget _buildAccessDenied() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -848,7 +850,102 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          // VIP Payment and Access Instructions Card
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.workspace_premium_rounded,
+                            color: Color(0xFFF59E0B),
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Как получить VIP-доступ',
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: const Text(
+                        '1 000 ₽ / 1 мес',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF10B981),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildInstructionStep(
+                  step: '1',
+                  title: 'Перевод 1 000 руб на 1 месяц',
+                  description: 'Для получения VIP доступа необходимо перевести 1000 руб на 1 месяц.',
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 12),
+                _buildInstructionStep(
+                  step: '2',
+                  title: 'Отправьте запрос на получение доступа',
+                  description: 'Нажмите кнопку ниже и отправьте запрос администратору.',
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 12),
+                _buildInstructionStep(
+                  step: '3',
+                  title: 'В комментарии укажите, от кого платеж',
+                  description: 'В поле комментария обязательно напишите, от кого поступил платеж (ФИО плательщика или данные перевода).',
+                  isDark: isDark,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           if (_hasPendingRequest)
             Container(
               padding: const EdgeInsets.all(16),
@@ -871,7 +968,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Администратор проверяет вашу заявку. Доступ откроется сразу после подтверждения.',
+                          'Администратор сверяет платеж (1000 руб / 1 мес). VIP-доступ откроется сразу после подтверждения.',
                           style: TextStyle(fontSize: 12, color: Color(0xFFB45309)),
                         ),
                       ],
@@ -896,7 +993,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
               ),
               icon: const Icon(Icons.send_rounded, size: 20),
               label: const Text(
-                'Отправить запрос на подключение администратору',
+                'Отправить запрос на получение доступа',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
@@ -907,8 +1004,70 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     );
   }
 
+  Widget _buildInstructionStep({
+    required String step,
+    required String title,
+    required String description,
+    required bool isDark,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 26,
+          height: 26,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFEFF6FF),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isDark ? const Color(0xFF475569) : const Color(0xFFBFDBFE),
+            ),
+          ),
+          child: Text(
+            step,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _openRequestDialog() async {
-    final commentController = TextEditingController(text: 'Прошу предоставить доступ к VIP-функциям.');
+    final commentController = TextEditingController(
+      text: _partnerFio.isNotEmpty
+          ? 'Оплата 1000 руб на 1 месяц. Платеж от: $_partnerFio'
+          : 'Оплата 1000 руб на 1 месяц. Платеж от: ',
+    );
     final fioController = TextEditingController(text: _partnerFio);
     final phoneController = TextEditingController(text: _partnerPhone);
 
@@ -940,19 +1099,46 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                             color: Colors.amber.shade100,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.workspace_premium, color: Colors.amber, size: 24),
+                          child: const Icon(Icons.workspace_premium_rounded, color: Colors.amber, size: 24),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Запрос на подключение VIP', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                              Text('Заявка будет передана администратору', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text('Запрос на получение VIP-доступа', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text('1 000 руб на 1 месяц', style: TextStyle(fontSize: 12, color: Color(0xFF10B981), fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.shade300),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: Colors.amber.shade900, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Для получения VIP доступа переведите 1000 руб на 1 месяц и отправьте запрос. В поле комментария обязательно укажите, от кого поступил платеж.',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: Colors.amber.shade900,
+                                fontWeight: FontWeight.w500,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const Divider(height: 24),
                     Text('ID партнера: $_cleanPartnerId', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -970,7 +1156,12 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                     TextField(
                       controller: commentController,
                       maxLines: 3,
-                      decoration: const InputDecoration(labelText: 'Сообщение / цель подключения', border: OutlineInputBorder(), isDense: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Комментарий (от кого платеж)',
+                        hintText: 'Обязательно укажите, от кого поступил платеж',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
                     ),
                     const SizedBox(height: 18),
                     ElevatedButton.icon(
@@ -984,7 +1175,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.send_rounded, size: 18),
                       label: Text(
-                        isSending ? 'Отправка заявки...' : 'Отправить запрос администратору',
+                        isSending ? 'Отправка заявки...' : 'Отправить запрос на получение доступа',
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       onPressed: isSending
