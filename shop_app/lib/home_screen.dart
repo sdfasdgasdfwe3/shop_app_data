@@ -12,10 +12,8 @@ import 'data_manager.dart';
 import 'main.dart';
 import 'models.dart';
 import 'screens/profile_screen.dart';
-import 'screens/tabs/articles_tab.dart';
 import 'screens/tabs/cart_tab.dart';
 import 'screens/tabs/catalog_tab.dart';
-import 'screens/tabs/promo_tab.dart';
 import 'screens/tabs/reviews_tab.dart';
 import 'theme.dart';
 import 'widgets/settings_bottom_sheet.dart';
@@ -406,14 +404,6 @@ class _HomeScreenState extends State<HomeScreen> {
           onRemoveFromCart: _removeFromCart,
           onRefresh: () => _loadData(refresh: true),
         ),
-        ArticlesTab(
-          appArticles: appData.articles,
-          userArticles: userData.articles,
-          repoUrl: dataManager.repoUrl,
-          isLoggedIn: _isLoggedIn,
-          onDeleteArticle: (article) => _deleteContent(article, true),
-          onRefresh: () => _loadData(refresh: true),
-        ),
         ReviewsTab(
           appReviews: appData.reviews,
           userReviews: userData.reviews,
@@ -435,10 +425,6 @@ class _HomeScreenState extends State<HomeScreen> {
             });
             _saveCart();
           },
-        ),
-        PromoTab(
-          appData: appData,
-          repoUrl: dataManager.repoUrl,
         ),
         ProfileScreen(
           showAppBar: false,
@@ -554,11 +540,6 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'Каталог',
             ),
             const NavigationDestination(
-              icon: Icon(Icons.article_outlined),
-              selectedIcon: Icon(Icons.article),
-              label: 'Статьи',
-            ),
-            const NavigationDestination(
               icon: Icon(Icons.star_outline_rounded),
               selectedIcon: Icon(Icons.star_rounded),
               label: 'Отзывы',
@@ -579,11 +560,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Icon(Icons.shopping_cart),
               ),
               label: 'Корзина',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.auto_awesome_outlined),
-              selectedIcon: Icon(Icons.auto_awesome),
-              label: 'Акции',
             ),
             NavigationDestination(
               icon: Icon(
