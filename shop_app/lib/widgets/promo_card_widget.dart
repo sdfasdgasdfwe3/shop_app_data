@@ -559,7 +559,7 @@ class PromoCardWidget extends StatelessWidget {
           border: Border.all(color: noneBorder),
         ),
         child: Text(
-          '💬 Цена и консультация — в ЛС',
+          'Цена и консультация — в ЛС',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,

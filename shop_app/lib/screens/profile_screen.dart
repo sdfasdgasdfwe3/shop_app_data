@@ -427,7 +427,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         final referralLink = (data['referralLink'] ?? '').toString().trim();
         final partnersGuid = (data['partnersGuid'] ?? '').toString().trim();
-        final warehouse = (data['warehouse'] ?? '★ Главный').toString().trim();
+        final warehouse = (data['warehouse'] ?? 'Основной').toString().trim();
         final partnerName = (data['partnerName'] ?? '').toString().trim();
         final stats = data['stats'] is Map ? Map<String, dynamic>.from(data['stats']) : null;
 

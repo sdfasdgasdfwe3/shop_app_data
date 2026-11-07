@@ -371,10 +371,10 @@ class _PromoTabState extends State<PromoTab> {
       final bullets = product != null ? _extractPromoBullets(product) : <String>[];
 
       final StringBuffer sb = StringBuffer();
-      sb.writeln('✨ $prodName\n');
+      sb.writeln('$prodName\n');
 
       if (bullets.isNotEmpty) {
-        sb.writeln('🌿 Полезные свойства:');
+        sb.writeln('Полезные свойства:');
         for (var b in bullets) {
           sb.writeln('• $b');
         }
@@ -385,16 +385,16 @@ class _PromoTabState extends State<PromoTab> {
         final priceVal = product != null && product.retailPrice > 0
             ? product.retailPrice
             : product?.price ?? 0;
-        sb.writeln('💰 Розничная цена: $priceVal ₽\n');
+        sb.writeln('Розничная цена: $priceVal ₽\n');
       } else if (_promoPriceMode == 'partner') {
         final priceVal = product?.price ?? 0;
-        sb.writeln('💰 Партнерская цена: $priceVal ₽\n');
+        sb.writeln('Партнерская цена: $priceVal ₽\n');
       }
 
       final phone = _promoPhoneController.text.isNotEmpty
           ? _promoPhoneController.text
           : '+7 (999) 777-22-33';
-      sb.write('📞 Заказ и консультация: $phone');
+      sb.write('Контакты: $phone');
 
       final shareText = sb.toString();
 
@@ -629,7 +629,7 @@ class _PromoTabState extends State<PromoTab> {
                     children: [
                       Expanded(
                         child: ChoiceChip(
-                          label: const Center(child: Text('🌲 Изумрудный')),
+                          label: const Center(child: Text('Изумрудный')),
                           selected: _promoTheme == 'dark',
                           selectedColor: const Color(0xFF065F46),
                           labelStyle: TextStyle(
@@ -647,7 +647,7 @@ class _PromoTabState extends State<PromoTab> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ChoiceChip(
-                          label: const Center(child: Text('🕊️ Эко-светлый')),
+                          label: const Center(child: Text('Светлый')),
                           selected: _promoTheme == 'light',
                           selectedColor: Colors.teal.shade700,
                           labelStyle: TextStyle(
@@ -669,7 +669,7 @@ class _PromoTabState extends State<PromoTab> {
                     children: [
                       Expanded(
                         child: ChoiceChip(
-                          label: const Center(child: Text('🌊 Синий')),
+                          label: const Center(child: Text('Синий')),
                           selected: _promoTheme == 'blue',
                           selectedColor: const Color(0xFF1D4ED8),
                           labelStyle: TextStyle(
@@ -687,7 +687,7 @@ class _PromoTabState extends State<PromoTab> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ChoiceChip(
-                          label: const Center(child: Text('❄️ Светло-голубой')),
+                          label: const Center(child: Text('Голубой')),
                           selected: _promoTheme == 'sky',
                           selectedColor: const Color(0xFF0284C7),
                           labelStyle: TextStyle(
@@ -709,7 +709,7 @@ class _PromoTabState extends State<PromoTab> {
                     children: [
                       Expanded(
                         child: ChoiceChip(
-                          label: const Center(child: Text('🌹 Красный')),
+                          label: const Center(child: Text('Красный')),
                           selected: _promoTheme == 'red',
                           selectedColor: const Color(0xFFDC2626),
                           labelStyle: TextStyle(
@@ -727,7 +727,7 @@ class _PromoTabState extends State<PromoTab> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ChoiceChip(
-                          label: const Center(child: Text('🌸 Светло-красный')),
+                          label: const Center(child: Text('Розовый')),
                           selected: _promoTheme == 'light_red',
                           selectedColor: const Color(0xFFE11D48),
                           labelStyle: TextStyle(

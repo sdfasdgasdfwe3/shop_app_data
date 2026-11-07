@@ -70,7 +70,7 @@ class ContentDetailScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () async {
-              final shareText = '$shareEmoji ${item.title}\n\n${item.content}';
+              final shareText = shareEmoji.isNotEmpty ? '$shareEmoji ${item.title}\n\n${item.content}' : '${item.title}\n\n${item.content}';
 
               if (imageUrl.isNotEmpty) {
                 final messenger = ScaffoldMessenger.of(context);
@@ -99,7 +99,7 @@ class ContentDetailScreen extends StatelessWidget {
                   if (context.mounted) {
                     messenger.hideCurrentSnackBar();
                   }
-                  await Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
+                  await Share.share('$shareText\n\nФото: $imageUrl');
                 }
               } else {
                 Share.share(shareText);

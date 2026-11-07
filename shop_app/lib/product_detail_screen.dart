@@ -72,7 +72,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       if (trimmed.isEmpty) continue;
 
       // Списки с плюсом (+)
-      if (trimmed.startsWith('+')) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      if (trimmed.startsWith('+') || trimmed.startsWith('✓') || trimmed.startsWith('✔')) {
         final text = trimmed.substring(1).trim();
         widgets.add(
           Padding(
@@ -80,16 +81,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.check_circle_outline,
-                  color: Colors.green,
-                  size: 20,
+                Container(
+                  margin: const EdgeInsets.only(top: 7.0),
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     text,
-                    style: const TextStyle(fontSize: 15, height: 1.45),
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.45,
+                      color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                    ),
                   ),
                 ),
               ],
@@ -107,19 +116,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  margin: const EdgeInsets.only(top: 8.0),
-                  width: 6,
-                  height: 6,
+                  margin: const EdgeInsets.only(top: 7.0),
+                  width: 5,
+                  height: 5,
                   decoration: BoxDecoration(
-                    color: accentColor,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     text,
-                    style: const TextStyle(fontSize: 15, height: 1.45),
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.45,
+                      color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                    ),
                   ),
                 ),
               ],
@@ -136,18 +149,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         final val = trimmed.substring(colonIdx + 1).trim();
         widgets.add(
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6.0),
+            padding: const EdgeInsets.symmetric(vertical: 5.0),
             child: RichText(
               text: TextSpan(
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 14,
                   height: 1.45,
-                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                  color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
                 ),
                 children: [
                   TextSpan(
                     text: '$key: ',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
                   ),
                   TextSpan(text: val),
                 ],
@@ -163,7 +179,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: Text(
               trimmed,
-              style: const TextStyle(fontSize: 15, height: 1.5),
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+              ),
             ),
           ),
         );
@@ -329,7 +349,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       if (context.mounted) {
         messenger.hideCurrentSnackBar();
       }
-      await Share.share('$shareText\n\n🖼️ Фото: $imageUrl');
+      await Share.share('$shareText\n\nФото: $imageUrl');
     }
   }
 
@@ -600,17 +620,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildSectionCard(ParsedSection section) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final headerBg = isDark ? const Color(0xFF161F2E) : const Color(0xFFF8FAFC);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: section.color.withValues(alpha: 0.15), width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.0),
         boxShadow: [
           BoxShadow(
-            color: section.color.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -620,22 +644,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: section.color.withValues(alpha: 0.08),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(18),
-              ),
+              color: headerBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              border: Border(bottom: BorderSide(color: borderColor, width: 1.0)),
             ),
             child: Row(
               children: [
-                Icon(section.icon, color: section.color, size: 22),
-                const SizedBox(width: 10),
+                Icon(
+                  section.icon,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     section.title,
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: section.textColor,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A),
                     ),
                   ),
                 ),
@@ -839,7 +866,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     constraints: const BoxConstraints(minWidth: 32),
                     alignment: Alignment.center,
                     child: Text(
-                      '',
+                      '$qty',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -935,16 +962,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       priceLine = '';
       pointsLine = '';
     } else if (_sendRetailPrice && widget.product.retailPrice > 0) {
-      priceLine = '💰 Цена: ${widget.product.retailPrice} ₽\n';
-      pointsLine = '⭐ Баллы: ${widget.product.points}\n';
+      priceLine = 'Цена: ${widget.product.retailPrice} ₽\n';
+      pointsLine = 'Баллы: ${widget.product.points}\n';
     } else {
-      priceLine = '💰 Цена: ${widget.product.price} ₽\n';
-      pointsLine = '⭐ Баллы: ${widget.product.points}\n';
+      priceLine = 'Цена: ${widget.product.price} ₽\n';
+      pointsLine = 'Баллы: ${widget.product.points}\n';
     }
     final String separator = (_hidePricePoints || priceLine.isEmpty) ? '\n' : '';
 
     final shareText =
-        '📦 ${widget.product.name}\n$priceLine$pointsLine$separator📝 Описание:\n${widget.product.description}';
+        '${widget.product.name}\n$priceLine$pointsLine$separatorОписание:\n${widget.product.description}';
 
     final parsedSections = _parseDescription(
       widget.product.description,

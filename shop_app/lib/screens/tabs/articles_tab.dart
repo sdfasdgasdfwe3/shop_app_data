@@ -139,7 +139,7 @@ class _ArticlesTabState extends State<ArticlesTab> {
                               builder: (context) => ContentDetailScreen(
                                 item: article,
                                 pageTitle: 'Статья',
-                                shareEmoji: '📄',
+                                shareEmoji: '',
                                 canDelete: widget.isLoggedIn && isUserAdded,
                                 onDelete: () => widget.onDeleteArticle(article),
                               ),

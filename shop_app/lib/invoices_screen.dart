@@ -238,13 +238,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                       String shareText =
                                           ' Накладная от $formattedDate\n\n';
                                       if (clientName.isNotEmpty) {
-                                        shareText += '👤 ID номер: $clientName\n';
+                                        shareText += 'ID: $clientName\n';
                                       }
                                       if (clientPhone.isNotEmpty) {
                                         shareText +=
-                                            '📞 Телефон: $clientPhone\n';
+                                            'Телефон: $clientPhone\n';
                                       }
-                                      shareText += '\n🛒 СПИСОК ТОВАРОВ:\n\n';
+                                      shareText += '\nСписок товаров:\n\n';
                                       int itemIndex = 1;
                                       for (var e in items.entries) {
                                         final pId = int.parse(e.key);
@@ -290,24 +290,24 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                               '$itemIndex. ${p.name}\n';
                                           if (giftQ == q) {
                                             shareText +=
-                                                '   🎁 $q шт. (В подарок)\n\n';
+                                                '   • $q шт. (в подарок)\n\n';
                                           } else if (giftQ > 0) {
                                             shareText +=
-                                                '   ➖ $paidQ шт. x ${p.price} ₽ = ${p.price * paidQ} ₽\n';
+                                                '   • $paidQ шт. x ${p.price} ₽ = ${p.price * paidQ} ₽\n';
                                             shareText +=
-                                                '   🎁 $giftQ шт. (В подарок)\n\n';
+                                                '   • $giftQ шт. (в подарок)\n\n';
                                           } else {
                                             shareText +=
-                                                '   ➖ $q шт. x ${p.price} ₽ = ${p.price * q} ₽\n\n';
+                                                '   • $q шт. x ${p.price} ₽ = ${p.price * q} ₽\n\n';
                                           }
                                           itemIndex++;
                                         }
                                       }
-                                      shareText += '➖➖➖➖➖➖➖➖➖➖\n';
+                                      shareText += '-------------------------\n';
                                       shareText +=
-                                          '💰 ИТОГО К ОПЛАТЕ: ${invoice['totalPrice']} ₽\n';
+                                          'Итого к оплате: ${invoice['totalPrice']} ₽\n';
                                       shareText +=
-                                          '⭐️ Итого баллов: ${invoice['totalPoints']}';
+                                          'Баллы: ${invoice['totalPoints']}';
                                       Share.share(shareText);
                                     },
                                   ),
