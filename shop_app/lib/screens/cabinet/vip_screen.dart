@@ -23,7 +23,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   bool _isLoading = true;
   bool _isVip = false;
   bool _hasPendingRequest = false;
-  String? _errorMessage;
+  String? _networkWarning;
 
   // Tabs: 0: Авто-регистрация, 1: Терминации
   late TabController _tabController;
@@ -118,13 +118,13 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   Future<void> _checkVipStatus() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _networkWarning = null;
     });
 
     try {
       final pid = _cleanPartnerId;
       final uri = Uri.parse('${widget.apiBaseUrl}/api/vip/status?partnerId=${Uri.encodeComponent(pid)}');
-      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      final response = await http.get(uri).timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -134,6 +134,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             _isVip = isVip;
             _hasPendingRequest = data['hasPendingRequest'] == true;
             _isLoading = false;
+            _networkWarning = null;
           });
 
           if (isVip) {
@@ -152,12 +153,14 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
       setState(() {
         _isVip = false;
         _isLoading = false;
+        _networkWarning = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Не удалось подключиться к серверу проверки прав';
+        _isVip = false; // Fallback to payment instructions so user is never blocked
+        _networkWarning = 'Сервер проверки прав медленно отвечает. Отображены реквизиты и инструкции.';
       });
     }
   }
@@ -184,7 +187,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     try {
       final res = await http.get(
         Uri.parse('${widget.apiBaseUrl}/api/sponsor?sid=${Uri.encodeComponent(clean)}&sponsor=${Uri.encodeComponent(clean)}'),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 25));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
@@ -257,7 +260,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     if (!silent) setState(() => _isLoadingRegistrations = true);
     try {
       final uri = Uri.parse('${widget.apiBaseUrl}/api/vip/auto-registrations?partnerId=${Uri.encodeComponent(_cleanPartnerId)}');
-      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+      final res = await http.get(uri).timeout(const Duration(seconds: 25));
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
         if (data['success'] == true && data['registrations'] is List) {
@@ -374,7 +377,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 25));
 
       final data = jsonDecode(utf8.decode(response.bodyBytes));
 
@@ -737,6 +740,11 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Обновить статус доступа',
+            onPressed: _checkVipStatus,
+          ),
+          IconButton(
             icon: const Icon(Icons.shield_rounded, color: Colors.amber),
             tooltip: 'Заявки и управление доступом',
             onPressed: _openAdminPanel,
@@ -761,32 +769,11 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
       );
     }
 
-    if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off, size: 48, color: Colors.orange),
-              const SizedBox(height: 12),
-              Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _checkVipStatus,
-                child: const Text('Повторить попытку'),
-              ),
-            ],
-          ),
-        ),
-      );
+    if (_isVip) {
+      return _buildVipHub();
     }
 
-    if (!_isVip) {
-      return _buildAccessDenied();
-    }
-
-    return _buildVipHub();
+    return _buildAccessDenied();
   }
 
   Widget _buildAccessDenied() {
@@ -797,6 +784,37 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_networkWarning != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? const Color(0xFFF59E0B).withValues(alpha: 0.3) : const Color(0xFFFDE68A),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 18, color: Color(0xFFD97706)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _networkWarning!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _checkVipStatus,
+                    child: const Text('Обновить', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -1342,7 +1360,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                                         'comment': commentController.text.trim(),
                                       }),
                                     )
-                                    .timeout(const Duration(seconds: 10));
+                                    .timeout(const Duration(seconds: 25));
 
                                 final data = jsonDecode(utf8.decode(response.bodyBytes));
                                 if (data['success'] == true) {
@@ -2391,7 +2409,7 @@ class _AdminPanelModalState extends State<_AdminPanelModal> with SingleTickerPro
   Future<void> _loadAdminData() async {
     setState(() => _isLoading = true);
     try {
-      final res = await http.get(Uri.parse('${widget.apiBaseUrl}/api/vip/requests')).timeout(const Duration(seconds: 10));
+      final res = await http.get(Uri.parse('${widget.apiBaseUrl}/api/vip/requests')).timeout(const Duration(seconds: 25));
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
         final List rawRequests = data['requests'] ?? [];
