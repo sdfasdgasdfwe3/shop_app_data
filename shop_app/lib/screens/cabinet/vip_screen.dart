@@ -265,8 +265,9 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
         final data = jsonDecode(utf8.decode(res.bodyBytes));
         if (data['success'] == true && data['registrations'] is List) {
           if (mounted) {
+            final all = List<Map<String, dynamic>>.from(data['registrations']);
             setState(() {
-              _registrations = List<Map<String, dynamic>>.from(data['registrations']);
+              _registrations = all.where((r) => (r['vipPartnerId'] ?? '').toString() == _cleanPartnerId).toList();
               if (!silent) _isLoadingRegistrations = false;
             });
             _checkAndStartPolling();
@@ -1063,7 +1064,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                             ),
                           ),
                           const Text(
-                            '1 000 руб (на 1 месяц)',
+                            '400 руб (на 1 месяц)',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -1078,8 +1079,8 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                 const SizedBox(height: 16),
                 _buildInstructionStep(
                   step: '1',
-                  title: 'Перевод 1 000 руб на 1 месяц',
-                  description: 'Переведите 1 000 руб в банк Тинькофф по номеру +7 995 910-91-77.',
+                  title: 'Перевод 400 руб на 1 месяц',
+                  description: 'Переведите 400 руб в банк Тинькофф по номеру +7 995 910-91-77.',
                   isDark: isDark,
                 ),
                 const SizedBox(height: 12),
@@ -1122,7 +1123,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Администратор сверяет платеж (1000 руб / 1 мес на Тинькофф). VIP-доступ откроется сразу после подтверждения.',
+                          'Администратор сверяет платеж (400 руб / 1 мес на Тинькофф). VIP-доступ откроется сразу после подтверждения.',
                           style: TextStyle(fontSize: 12, color: Color(0xFFB45309)),
                         ),
                       ],
@@ -1219,8 +1220,8 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
   Future<void> _openRequestDialog() async {
     final commentController = TextEditingController(
       text: _partnerFio.isNotEmpty
-          ? 'Оплата 1000 руб на Тинькофф (1 месяц). Платеж от: $_partnerFio'
-          : 'Оплата 1000 руб на Тинькофф (1 месяц). Платеж от: ',
+          ? 'Оплата 400 руб на Тинькофф (1 месяц). Платеж от: $_partnerFio'
+          : 'Оплата 400 руб на Тинькофф (1 месяц). Платеж от: ',
     );
     final fioController = TextEditingController(text: _partnerFio);
     final phoneController = TextEditingController(text: _partnerPhone);
@@ -1261,7 +1262,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Запрос на получение VIP-доступа', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              Text('1 000 руб на 1 месяц', style: TextStyle(fontSize: 12, color: Color(0xFF10B981), fontWeight: FontWeight.w600)),
+                              Text('400 руб на 1 месяц', style: TextStyle(fontSize: 12, color: Color(0xFF10B981), fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
@@ -1296,7 +1297,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Сумма: 1 000 руб на 1 месяц. В поле комментария ниже обязательно укажите, от кого платеж (ФИО или данные чека).',
+                            'Сумма: 400 руб на 1 месяц. В поле комментария ниже обязательно укажите, от кого платеж (ФИО или данные чека).',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.amber.shade900,
