@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class VipScreen extends StatefulWidget {
@@ -69,6 +70,7 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
     if (_cleanPartnerId.isNotEmpty) {
       _sponsorController.text = _cleanPartnerId;
     }
+    _loadTerminationsCache();
     _checkVipStatus();
   }
 
@@ -609,6 +611,101 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
 
   // ===================== АНАЛИЗ ТЕРМИНАЦИЙ МЕТОДЫ =====================
 
+  Future<void> _saveTerminationsCache(Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'vip_term_cache_$_cleanPartnerId',
+        jsonEncode({
+          'nextMonthName': data['nextMonthName'] ?? '',
+          'totalDownlineCount': data['totalDownlineCount'] ?? 0,
+          'partners': data['partners'] ?? [],
+          'savedAt': DateTime.now().millisecondsSinceEpoch,
+        }),
+      );
+    } catch (_) {}
+  }
+
+  Future<bool> _loadTerminationsCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString('vip_term_cache_$_cleanPartnerId');
+      if (str != null && str.isNotEmpty) {
+        final decoded = jsonDecode(str);
+        if (decoded is Map && decoded['partners'] is List) {
+          if (mounted) {
+            setState(() {
+              _nextMonthName = (decoded['nextMonthName'] ?? '').toString();
+              _totalDownlineCount = (decoded['totalDownlineCount'] ?? 0) as int;
+              _terminatingPartners = List<Map<String, dynamic>>.from(decoded['partners']);
+            });
+            return true;
+          }
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> _trySilentReauthAndReloadTerminations() async {
+    final password = (widget.user['password'] ?? '').toString().trim();
+    if (password.isEmpty) return false;
+
+    try {
+      final loginRes = await http
+          .post(
+            Uri.parse('${widget.apiBaseUrl}/api/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'username': _cleanPartnerId,
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 25));
+
+      if (loginRes.statusCode == 200) {
+        final loginData = jsonDecode(utf8.decode(loginRes.bodyBytes));
+        if (loginData['success'] == true && loginData['user'] != null) {
+          final u = Map<String, dynamic>.from(loginData['user']);
+          widget.user['ticket'] = u['ticket'] ?? widget.user['ticket'];
+          widget.user['partnersTicket'] = u['partnersTicket'] ?? u['ticket'] ?? widget.user['partnersTicket'];
+          widget.user['partnersGuid'] = u['partnersGuid'] ?? widget.user['partnersGuid'];
+          widget.user['usersTicket'] = u['usersTicket'] ?? widget.user['usersTicket'];
+          widget.user['utckt'] = u['usersTicket'] ?? widget.user['utckt'];
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('saved_auth_user', jsonEncode(widget.user));
+
+          // Retry fetching terminations with fresh ticket
+          final pid = _cleanPartnerId;
+          final uri = Uri.parse(
+            '${widget.apiBaseUrl}/api/vip/terminations?partnerId=${Uri.encodeComponent(pid)}&ticket=${Uri.encodeComponent(_ticket)}&guid=${Uri.encodeComponent(_guid)}&utckt=${Uri.encodeComponent(_utckt)}&login=${Uri.encodeComponent(pid)}',
+          );
+          final termRes = await http.get(uri).timeout(const Duration(seconds: 25));
+          if (termRes.statusCode == 200) {
+            final termData = jsonDecode(utf8.decode(termRes.bodyBytes));
+            if (termData['success'] == true) {
+              if (mounted) {
+                setState(() {
+                  _nextMonthName = (termData['nextMonthName'] ?? '').toString();
+                  _totalDownlineCount = (termData['totalDownlineCount'] ?? 0) as int;
+                  _terminatingPartners = List<Map<String, dynamic>>.from(termData['partners'] ?? []);
+                  _isLoadingTerminations = false;
+                  _terminationsError = null;
+                });
+                _saveTerminationsCache(termData);
+              }
+              return true;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[VIP] Re-auth error: $e');
+    }
+    return false;
+  }
+
   Future<void> _loadTerminations() async {
     setState(() {
       _isLoadingTerminations = true;
@@ -624,30 +721,68 @@ class _VipScreenState extends State<VipScreen> with SingleTickerProviderStateMix
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
         if (data['success'] == true) {
-          setState(() {
-            _nextMonthName = (data['nextMonthName'] ?? '').toString();
-            _totalDownlineCount = (data['totalDownlineCount'] ?? 0) as int;
-            _terminatingPartners = List<Map<String, dynamic>>.from(data['partners'] ?? []);
-            _isLoadingTerminations = false;
-          });
+          if (mounted) {
+            setState(() {
+              _nextMonthName = (data['nextMonthName'] ?? '').toString();
+              _totalDownlineCount = (data['totalDownlineCount'] ?? 0) as int;
+              _terminatingPartners = List<Map<String, dynamic>>.from(data['partners'] ?? []);
+              _isLoadingTerminations = false;
+              _terminationsError = null;
+            });
+            _saveTerminationsCache(data);
+          }
           return;
-        } else {
+        }
+      }
+
+      // If the ticket was invalidated by another device logging in, attempt silent re-authentication
+      final reauthOk = await _trySilentReauthAndReloadTerminations();
+      if (reauthOk) return;
+
+      // Fallback to cache if network/ticket failed
+      if (_terminatingPartners.isEmpty) {
+        final hasCache = await _loadTerminationsCache();
+        if (hasCache && mounted) {
           setState(() {
-            _terminationsError = data['error'] ?? 'Не удалось рассчитать терминации';
             _isLoadingTerminations = false;
+            _terminationsError = null;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Отображены сохранённые данные структуры'), duration: Duration(seconds: 2)),
+          );
+          return;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _terminationsError = _terminatingPartners.isNotEmpty
+              ? null
+              : 'Не удалось обновить структуру с сервера. Проверьте соединение.';
+          _isLoadingTerminations = false;
+        });
+      }
+    } catch (e) {
+      final reauthOk = await _trySilentReauthAndReloadTerminations();
+      if (reauthOk) return;
+
+      if (_terminatingPartners.isEmpty) {
+        final hasCache = await _loadTerminationsCache();
+        if (hasCache && mounted) {
+          setState(() {
+            _isLoadingTerminations = false;
+            _terminationsError = null;
           });
           return;
         }
       }
-      setState(() {
-        _terminationsError = 'Ошибка ответа сервера (${res.statusCode})';
-        _isLoadingTerminations = false;
-      });
-    } catch (e) {
-      setState(() {
-        _terminationsError = 'Сбой сети при анализе структуры: $e';
-        _isLoadingTerminations = false;
-      });
+
+      if (mounted) {
+        setState(() {
+          _terminationsError = _terminatingPartners.isNotEmpty ? null : 'Сбой сети при анализе структуры: $e';
+          _isLoadingTerminations = false;
+        });
+      }
     }
   }
 
