@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // ── Brand / Deep Navy & Slate ──────────────────────────────────────────────
-  static const Color primary          = Color(0xFF0F172A); // Deep Slate 900 (Corporate, modern)
-  static const Color primaryBlue      = Color(0xFF2563EB); // Vibrant Royal Sapphire 600
-  static const Color primaryNavy      = Color(0xFF1E293B); // Slate 800
-  static const Color accentBlue       = Color(0xFF38BDF8); // Sky 400 for dark mode highlights
-  static const Color accentIndigo     = Color(0xFF4F46E5); // Indigo 600
+  // ── Brand / Warm Stone & Forest Sage (Soft Lifestyle) ────────────────────────
+  static const Color primary          = Color(0xFF1C1917); // Warm Stone 900 (Gentle charcoal)
+  static const Color primaryBlue      = Color(0xFF2D6A4F); // Deep Forest Sage (Organic botanical)
+  static const Color primaryNavy      = Color(0xFF292524); // Warm Stone 800
+  static const Color accentBlue       = Color(0xFF52B788); // Soft Sage Green
+  static const Color accentIndigo     = Color(0xFFD97706); // Warm Amber Honey
 
   // ── Backgrounds ─────────────────────────────────────────────────────────────
-  static const Color bgLight          = Color(0xFFF8FAFC); // Slate 50 crisp clean canvas
-  static const Color bgDark           = Color(0xFF090D16); // Deep Midnight Obsidian (true dark navy)
+  static const Color bgLight          = Color(0xFFFBFBF9); // Warm Linen / Soft Cream Canvas
+  static const Color bgDark           = Color(0xFF121212); // Deep Warm Charcoal Dark
 
   // ── Cards & Surfaces ────────────────────────────────────────────────────────
-  static const Color cardLight        = Color(0xFFFFFFFF); // Crisp Pure White
-  static const Color cardDark         = Color(0xFF111827); // Rich Midnight Slate
-  static const Color accentDark       = Color(0xFF1E293B); // Slate 800
-  static const Color surfaceMutedLight= Color(0xFFF1F5F9); // Slate 100
-  static const Color surfaceMutedDark = Color(0xFF1F2937); // Gray 800 subtle
+  static const Color cardLight        = Color(0xFFFFFFFF); // Crisp Milk White
+  static const Color cardDark         = Color(0xFF1C1917); // Warm Midnight Stone
+  static const Color accentDark       = Color(0xFF292524); // Warm Stone 800
+  static const Color surfaceMutedLight= Color(0xFFF4F2EC); // Warm Oatmeal Linen
+  static const Color surfaceMutedDark = Color(0xFF292524); // Stone 800 subtle
 
   // ── Text ─────────────────────────────────────────────────────────────────────
-  static const Color textPrimaryLight   = Color(0xFF0F172A); // Deep Slate 900
-  static const Color textPrimaryDark    = Color(0xFFF8FAFC); // Slate 50
-  static const Color textSecondaryLight = Color(0xFF64748B); // Slate 500
-  static const Color textSecondaryDark  = Color(0xFF94A3B8); // Slate 400
-  static const Color textMutedLight     = Color(0xFF94A3B8); // Slate 400
-  static const Color textMutedDark      = Color(0xFF64748B); // Slate 500
+  static const Color textPrimaryLight   = Color(0xFF1C1917); // Warm Stone 900
+  static const Color textPrimaryDark    = Color(0xFFFBFBF9); // Warm Linen Light
+  static const Color textSecondaryLight = Color(0xFF78716C); // Warm Stone 500
+  static const Color textSecondaryDark  = Color(0xFFA8A29E); // Warm Stone 400
+  static const Color textMutedLight     = Color(0xFFA8A29E); // Warm Stone 400
+  static const Color textMutedDark      = Color(0xFF78716C); // Warm Stone 500
 
   // ── Status ───────────────────────────────────────────────────────────────────
   static const Color success = Color(0xFF10B981); // Emerald 500
@@ -33,14 +33,14 @@ class AppTheme {
   static const Color error   = Color(0xFFEF4444); // Rose 500
 
   // ── Borders ──────────────────────────────────────────────────────────────────
-  static const Color borderLight = Color(0xFFE2E8F0); // Slate 200 hairline border
-  static const Color borderDark  = Color(0xFF1F2937); // Gray 800 / Slate 800
+  static const Color borderLight = Color(0xFFE8E5DD); // Warm Soft Greige hairline
+  static const Color borderDark  = Color(0xFF2E2A27); // Deep Stone border
 
-  // ── Shape & Radii Design Tokens ──────────────────────────────────────────────
-  static const double radiusSm   = 8.0;   // Chips, badges, small buttons
-  static const double radiusMd   = 12.0;  // Input fields, standard buttons, steppers
-  static const double radiusLg   = 16.0;  // Product cards, containers, dialogs
-  static const double radiusXl   = 24.0;  // Bottom sheets, large modals
+  // ── Shape & Radii Design Tokens (Soft Lifestyle) ────────────────────────────
+  static const double radiusSm   = 10.0;  // Chips, badges, small buttons
+  static const double radiusMd   = 14.0;  // Input fields, standard buttons, steppers
+  static const double radiusLg   = 20.0;  // Product cards, containers, dialogs
+  static const double radiusXl   = 28.0;  // Bottom sheets, large modals
   static const double radiusPill = 999.0; // Category pills, status pills
 
   static final BorderRadius roundedSm   = BorderRadius.circular(radiusSm);
@@ -73,24 +73,24 @@ class AppTheme {
       border: Border.all(color: isDark ? borderDark : borderLight, width: 1.0),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
-          blurRadius: 10,
-          offset: const Offset(0, 3),
+          color: const Color(0xFF1C1917).withValues(alpha: isDark ? 0.3 : 0.04),
+          blurRadius: 14,
+          offset: const Offset(0, 4),
         ),
       ],
     );
   }
 
-  // ── Gradient helpers (Sophisticated Deep Sapphire Shimmer) ──────────────────
+  // ── Gradient helpers (Soft Lifestyle Botanical Warm Shimmer) ───────────────
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
+    colors: [Color(0xFF1C1917), Color(0xFF2D6A4F)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  static BoxDecoration gradientBox({double radius = 12}) => BoxDecoration(
+  static BoxDecoration gradientBox({double radius = 14}) => BoxDecoration(
     gradient: const LinearGradient(
-      colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
+      colors: [Color(0xFF1C1917), Color(0xFF2D6A4F)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -101,9 +101,9 @@ class AppTheme {
     ),
     boxShadow: [
       BoxShadow(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.2),
-        blurRadius: 10,
-        offset: const Offset(0, 3),
+        color: const Color(0xFF1C1917).withValues(alpha: 0.15),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
       ),
     ],
   );
@@ -133,7 +133,7 @@ class AppTheme {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: borderLight, width: 1),
       ),
     ),
@@ -164,23 +164,23 @@ class AppTheme {
         fontWeight: FontWeight.w500,
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: borderLight, width: 1),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: borderLight, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: primaryBlue, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: error, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: error, width: 1.5),
       ),
     ),
@@ -191,7 +191,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         minimumSize: const Size(0, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
@@ -203,7 +203,7 @@ class AppTheme {
         foregroundColor: textPrimaryLight,
         minimumSize: const Size(0, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
@@ -326,7 +326,7 @@ class AppTheme {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: borderDark, width: 1),
       ),
     ),
@@ -357,19 +357,19 @@ class AppTheme {
         fontWeight: FontWeight.w500,
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: borderDark, width: 1),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: borderDark, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: accentBlue, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: error, width: 1),
       ),
     ),
@@ -380,7 +380,7 @@ class AppTheme {
         foregroundColor: primary,
         minimumSize: const Size(0, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
@@ -392,7 +392,7 @@ class AppTheme {
         foregroundColor: textPrimaryDark,
         minimumSize: const Size(0, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
